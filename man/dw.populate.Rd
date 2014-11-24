@@ -16,6 +16,6 @@ dw.populate(n = 1000, seed = 1, scenario = c("fact", "star schema",
 \item{verbose}{integer print sub statuses}
 }
 \description{
-sample DW data
+sample DW data. TODO better example data, k argument for groups size like in DT benchmark
 }
 

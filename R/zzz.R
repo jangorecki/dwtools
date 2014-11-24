@@ -14,11 +14,11 @@
   # usage
   #DT[, dwtools_session := getOption("dwtools.session")]
   
-  options("dwtools.verbose" = 0)
+  options("dwtools.verbose"=0)
   
-  options("dwtools.timing" = FALSE)
-  #options("dwtools.timing.conn.name" = "sqlite1")
-  #options("dwtools.timing.name "= "mylogtable")
+  options("dwtools.timing"=FALSE) # TODO test, dev?
+  #options("dwtools.timing.conn.name"="sqlite1")
+  #options("dwtools.timing.name"="mylogtable")
   
   # db
   
@@ -33,5 +33,5 @@
 }
 
 .onAttach <- function(libname, pkgname){
-  packageStartupMessage("dwtools (pre 1.0.0) not yet functional")
+  packageStartupMessage("dwtools (pre 1.0.0)")
 }

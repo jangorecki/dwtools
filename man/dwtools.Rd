@@ -3,11 +3,8 @@
 \name{dwtools}
 \alias{dwtools}
 \alias{dwtools-package}
-\title{dwtools}
+\title{Data Warehouse tools}
 \description{
 Extension for \link{data.table} package for Data Warehouse related functionalities.
-}
-\references{
-\url{https://www.github.com/jangorecki/dwtools}
 }
 

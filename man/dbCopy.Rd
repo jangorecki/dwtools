@@ -3,7 +3,11 @@
 \alias{dbCopy}
 \title{Copy tables between databases}
 \usage{
-dbCopy(source.name, source.conn.name, target.name, target.conn.name)
+dbCopy(source.table.name, source.conn.name, target.table.name, target.conn.name,
+  verbose = getOption("dwtools.verbose"))
+}
+\arguments{
+\item{source.table.name}{}
 }
 \description{
 Copy tables between databases

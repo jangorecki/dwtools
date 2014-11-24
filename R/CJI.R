@@ -1,3 +1,6 @@
+#' @title setindex
+#' @description setindex
+#' @keywords internal
 setindex <- function(dt, ..., verbose = getOption("datatable.verbose")){
   cols <- data.table:::getdots()
   setindexv(dt, cols, verbose = verbose)

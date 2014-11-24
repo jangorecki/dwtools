@@ -1,22 +1,21 @@
-#' @title dwtools
+#' @title Data Warehouse tools
 #' @description Extension for \link{data.table} package for Data Warehouse related functionalities.
-#' @references \url{https://www.github.com/jangorecki/dwtools}
 #' @docType package
+#' @import data.table digest
 #' @name dwtools
-#' @aliases dwtools-package
-#' @import data.table
 NULL
 
 # dw.populate -------------------------------------------------------------
 
 #' @title Populate data
-#' @description sample DW data
+#' @description sample DW data. TODO better example data, k argument for groups size like in DT benchmark
 #' @param n integer facts volume
+#' @param k groups
 #' @param seed integer used in \code{set.seed}
 #' @param scenario character in \code{c("fact","star schema","star schema denormalized")}
 #' @param verbose integer print sub statuses
 #' @export
-dw.populate <- function(n = 1e3, seed = 1, scenario = c("fact","star schema","star schema denormalized"), verbose = getOption("dwtools.verbose")){
+dw.populate <- function(n = 1e3, k = 10, seed = 1, scenario = c("fact","star schema","star schema denormalized"), verbose = getOption("dwtools.verbose")){
   product <- 
     data.table(prod_code = 1:16,
                prod_name = paste("prod",letters[1:16]),
@@ -53,11 +52,26 @@ dw.populate <- function(n = 1e3, seed = 1, scenario = c("fact","star schema","st
                date_code = sample(time[,date_code], n, TRUE),
                quantity = rnorm(n, 500, 200),
                value = rnorm(n, n, 2000))
+  
+  TODO_to_use <- function(){
+    DT <- data.table(
+      id1 = sample(sprintf("id%03d",1:K), N, TRUE),      # large groups (char)
+      id2 = sample(sprintf("id%03d",1:K), N, TRUE),      # large groups (char)
+      id3 = sample(sprintf("id%010d",1:(N/K)), N, TRUE), # small groups (char)
+      id4 = sample(K, N, TRUE),                          # large groups (int)
+      id5 = sample(K, N, TRUE),                          # large groups (int)
+      id6 = sample(N/K, N, TRUE),                        # small groups (int)
+      v1 =  sample(5, N, TRUE),                          # int in range [1,5]
+      v2 =  sample(5, N, TRUE),                          # int in range [1,5]
+      v3 =  sample(round(runif(100,max=100),4), N, TRUE) # numeric e.g. 23.5749
+    )
+  } # TODO k arg
+  
   DT = switch(scenario,
               "fact" = sales,
               "star schema" = list(sales=sales,product=product,customer=customer,geography=geography,time=time),
               "denormalized star schema" = joinbyv(master=sales, join=list(product=product,customer=customer,geography=geography,time=time), by=list("prod_code","cust_code","state_code","date_code")))
-  if(verbose > 0) cat(as.character(Sys.time()),": dw.populate: processed scenario '",scenario,"'\n",sep="")
+  if(verbose > 0) cat(as.character(Sys.time()),": dw.populate: processed scenario '",scenario,"' volume n: ",n,", groups k:",k,"\n",sep="")
   return(DT)
 }
 
@@ -88,4 +102,27 @@ timing <- function(expr, nrow_in = NA_integer_,
   if(!is.null(.timing.name) && !is.null(.timing.conn.name)) db(x, name=.timing.name, conn.name=.timing.conn.name, .timing=FALSE)
   else eval.parent(setattr(r, "timing", x))
   return(x)
+}
+
+# technical ---------------------------------------------------------------
+
+#' @title as.POSIXct
+#' @description Setting default for UTC and 1970.
+#' @keywords internal
+as.POSIXct <- function(x,tz="UTC",origin="1970-01-01"){
+  base::as.POSIXct(x,tz=tz,origin=origin)
+}
+
+#' @title int.is.POSIXct
+#' @description Check if is integer and can be POSIX between 1970 and 2100.
+#' @keywords internal
+int.is.POSIXct <- function(x, date_from = as.POSIXct("1970-01-01"), date_to = as.POSIXct("2100-01-01")){
+  is.integer(x) && all(as.POSIXct(x) %between% c(date_from,date_to))
+}
+
+#' @title nrowDT
+#' @description Return nrow if DT else NA.
+#' @keywords internal
+nrowDT <- function(x){
+  if(any(c("data.frame","data.table") %in% class(x))) nrow(x) else NA_integer_
 }

@@ -3,7 +3,10 @@
 \alias{db_dict}
 \title{db_dict}
 \usage{
-db_dict()
+db_dict(drvName)
+}
+\arguments{
+\item{drvName}{character vector of}
 }
 \description{
 Dictionary about save, load, postprocess, etc. for each db driver.
