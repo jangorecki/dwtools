@@ -104,14 +104,19 @@ Denormalization of star schema and snowflake schema to flat fact table.
 `?joinbyv`
 
 ```r
+names(X) # list tables in star schema
+#> [1] "SALES"     "CUSTOMER"  "PRODUCT"   "GEOGRAPHY" "TIME"      "CURRENCY"
+sapply(X, nrow) # nrow of each tbl
+#>     SALES  CUSTOMER   PRODUCT GEOGRAPHY      TIME  CURRENCY 
+#>    100000       100      1000        50      1826        49
 # denormalize 
 DT = joinbyv(
   master = X$SALES,
-  join = list(customer=X$CUSTOMER,
-              product=X$PRODUCT,
-              geography=X$GEOGRAPHY,
-              time=X$TIME,
-              currency=X$CURRENCY),
+  join = list(customer = X$CUSTOMER,
+              product = X$PRODUCT,
+              geography = X$GEOGRAPHY,
+              time = X$TIME,
+              currency = X$CURRENCY),
   col.subset = list(c("cust_active"),
                     c("prod_group_name","prod_family_name"),
                     c("region_name"),
@@ -138,7 +143,7 @@ Creates custom indices for a data.table object. May require lot of memory.
 ## License
 GPL-3.  
 Donations are welcome and will be partially forwarded to dependencies of dwtools.  
-`19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN`.
+[19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN](https://blockchain.info/address/19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN)
 
 ## Contact
 `J.Gorecki@wit.edu.pl`
