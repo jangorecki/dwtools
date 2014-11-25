@@ -7,6 +7,17 @@ timing(expr, nrow_in = NA_integer_, .timing = getOption("dwtools.timing"),
   .timing.name = getOption("dwtools.timing.name"),
   .timing.conn.name = getOption("dwtools.timing.conn.name"))
 }
+\arguments{
+\item{expr}{expression}
+
+\item{nrow_in}{integer manually provided input object nrow}
+
+\item{.timing}{logical}
+
+\item{.timing.name}{character}
+
+\item{.timing.conn.name}{character}
+}
 \description{
 Collect timings and nrows when possible.
 }

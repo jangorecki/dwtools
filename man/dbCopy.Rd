@@ -7,7 +7,15 @@ dbCopy(source.table.name, source.conn.name, target.table.name, target.conn.name,
   verbose = getOption("dwtools.verbose"))
 }
 \arguments{
-\item{source.table.name}{}
+\item{source.table.name}{character vector of tables names to copy from source connection}
+
+\item{source.conn.name}{character scalar}
+
+\item{target.table.name}{character vector of tables names to copy to target connection}
+
+\item{target.conn.name}{character scalar}
+
+\item{verbose}{integer status messages}
 }
 \description{
 Copy tables between databases

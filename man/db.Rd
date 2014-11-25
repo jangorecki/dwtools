@@ -15,6 +15,14 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
 
 \item{key}{character vector to be used to set key, cannot be mixed with multiple connections queries, see examples for chaining in DT syntax.}
 
+\item{.db.preprocess}{logical.}
+
+\item{.db.postprocess}{logical.}
+
+\item{.db.conns}{list of connections uniquely named.}
+
+\item{.db.dict}{data.table db interface dictionary.}
+
 \item{timing}{logical measure timing of queries, read \link{timing}.}
 
 \item{verbose}{integer, if greater than 0 then print debugging messages.}
@@ -22,10 +30,10 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
 \item{\dots}{if \code{x} is data.table then \dots expects character table names and character connection names else \dots expects only character connection names.}
 }
 \value{
-In case of \emph{dbWriteTable/dbReadTable/dbGetQuery} the data.table object (possibly with attributes), in case of \emph{dbSendQuery} the send query results,
+In case of \strong{write / read / get} the data.table object (possibly with some extra attributes), in case of \strong{send} action the send query results.
 }
 \description{
-Simple database interface
+Common db interface for DBI, RODBC and other custom defined off-memory storage. So far it was tested with SQLite, postgres and csv.
 }
 \details{
 Function is designed to be slim and chainable in data.table \code{`[`} operator.
@@ -41,26 +49,28 @@ Function is designed to be slim and chainable in data.table \code{`[`} operator.
 Table names, sql commands, connection names can be character vectors. It allows processing into multiple connections and tables at once. The list of results will be returned, it will be named by the connection names, so if the connecion name was recycled (e.g. \code{db(c("my_tab1","my_tab2"))}) then there will be duplicated names in the resulted list.
 }
 
-\section{DB interface unifications}{
+\section{Limitations}{
 
-TODO: You can provide table name as \code{"my_schema1.my_tab1"} and it will be processed according to target db (e.g. for postgres: \code{c("my_schema1","my_tabl1")}).
-SQL statements are not unified.
+Table names must not contains spaces (which are accepted by some db vendors).\cr
+SQL send statements should contains spaces. E.g. sqlite \code{.tables} command will need to be written as \code{db("SELECT * FROM sqlite_master WHERE type='table'")}.\cr
+Below are the per driver name limitations:
+\itemize{
+\item \code{csv}: No \strong{get} and \strong{send} actions. Extension \emph{.csv} is automatically added to provided table name character (or to \link{auto.table.name} in table name was not provided).
 }
-
-\section{Limitation}{
-
-Table names must not contains spaces (which are accepted by some db vendors).
-SQL send statements should contains spaces. E.g. sqlite \code{.tables} command will need to be written as \code{db("SELECT * FROM sqlite_master WHERE type='table'")}.
 }
 
 \section{Auto table name}{
 
-If writing to db and table name is missing or NULL then the \link{auto.table.name} will be used. The table name used in \emph{dbWriteTable} will be provided as \code{"tablename"} attribute of the function result so it can be catched for later use.
+If writing to db and table name is missing or NULL then the \link{auto.table.name} will be used. The table name used in \strong{write} will be provided as \code{"tablename"} attribute of the function result so it can be catched for later use.
 }
 
-\section{DB migration}{
+\section{DB interface dictionary}{
 
-There preprocessing and postprocessing functions available so the classes of the data returned by external databases can be also integrated. This gives R ability to act as data hub and gain value as ETL tool.
+If you read/write to non-default schema use the \code{"my_schema1.my_tab1"} table names, it will be translated to expected format for target db (e.g. for postgres: \code{c("my_schema1","my_tabl1")}).\cr
+SQL statements are not unified.\cr
+There are preprocessing and postprocessing functions available per defined db driver. Those functions can be used for seemless integration in case if write/read to db lose classes of the data.\cr
+This gives R ability to act as data hub and gain value as ETL tool.\cr
+You can add new interfaces by extending \link{db_dict}. Pull Requests are welcome.
 }
 \examples{
 suppressPackageStartupMessages(library(data.table))
@@ -70,8 +80,8 @@ options("dwtools.verbose"=3)  # turn on status messages printed to console
 # Setup db connections --------------------------------------------------------------------
 
 ##### define your connections
-# only SQLite works out of the box without any configuration outside of R
-# soon should be supported postgres, RODBC, csv, they may work already but were not tested.
+# csv and SQLite works out of the box without configuration outside of R
+# soon should be supported postgres, RODBC, they may work already but were not tested.
 
 library(RSQLite) # install.packages("RSQLite")
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db")
@@ -80,18 +90,23 @@ sqlite2 = list(drvName="SQLite",dbname="sqlite2.db")
 sqlite2$conn = dbConnect(SQLite(), dbname=sqlite2$dbname)
 sqlite3 = list(drvName="SQLite",dbname="sqlite3.db")
 sqlite3$conn = dbConnect(SQLite(), dbname=sqlite3$dbname)
-options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3))
+library(data.table)
+csv1 = list(drvName = "csv")
+
+# configure connections
+options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,csv1=csv1))
 
 # library(RPostgreSQL) # install.packages("RPostgreSQL")
-# psql <- list(drvName="PostgreSQL", host="localhost", port="5432", dbname="", user="", schema="")
-# psql$conn <- dbConnect(drv=psql$drvName, host=psql$host, port=psql$port, dbname=psql$dbname, user=psql$user, password="")
+# psql1 <- list(drvName="PostgreSQL", host="localhost", port="5432", dbname="dwtools", user="dwtools") # schema="" not tested
+# psql1$conn <- dbConnect(PostgreSQL(), host=psql1$host, port=psql1$port, dbname=psql1$dbname, user=psql1$user, password="dwtools_pass")
 # library(RMySQL) # install.packages("RMySQL")
-# mysql1 = list(drvName = "MySQL", dbname = "",user = "",pass = "",conn = "")
+# mysql1 = list(drvName="MySQL", host="localhost", port="3306", dbname="dwtools", user="dwtools")
+# mysql1$conn <-dbConnect(MySQL(), host=mysql1$host, port=mysql1$port, dbname=mysql1$dbname, user=mysql1$user, password="dwtools_pass")
 # library(RODBC) # install.packages("RODBC")
-# odbc1 <- list(drvName="ODBC", user="usr", dbname="dbn", dsn = "mydsn")
-# odbc1$conn <- odbcConnect(dsn = odbc1$dsn, uid=odbc1$user, pwd="mypass")
-# library(data.table)
-# csv1 = list(drvName = "csv", file = "")
+# odbc1 <- list(drvName="ODBC", user="dwtools", dbname="dwtools", dsn="mydsn")
+# odbc1$conn <- odbcConnect(dsn=odbc1$dsn, uid=odbc1$user, pwd="dwtools_pass")
+# library(RCurl); library(jsonlite) # TODO: # install.packages(c("RCurl","jsonlite"))
+# cdb1 <- list(drvName="couchdb", host="localhost", port="5984", dbname="dwtools")
 
 # Basic usage --------------------------------------------------------------------
 
@@ -101,6 +116,7 @@ options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3)
 
 db(DT,"my_tab1") # write to db, using default db connection (first in list)
 db(DT,"my_tab2","sqlite2") # WRITE to my_tab_alt to sqlite2 connection
+db(DT,"my_tab1","csv1") # WRITE to my_tab1.csv
 r1 = db(DT) # write to auto named table in default db connection (first in list)
 attr(r1,'tablename',TRUE) # auto generated table name # ?auto.table.name
 r2 = db(DT,NULL,"sqlite2") # the same above but another connection
@@ -112,6 +128,7 @@ sapply(l, function(x) attr(x,"tablename",TRUE))
 
 db("my_tab1")
 db("my_tab2","sqlite2")
+db("my_tab1","csv1") # READ from my_tab1.csv
 r1 = db("my_tab1","sqlite1",key=c("prod_code","cust_code","state_code","date_code")) # set key on result, useful on chaining, see 'Chaining data.table' examples below
 str(r1) # keys
 db(DT, "my_tab2") # CREATE TABLE just for below line example
@@ -130,6 +147,8 @@ str(l)
 
 ### send, aka: UPDATE, INDEX, DROP, etc.
 
+db(c("CREATE INDEX idx_my_tab1a ON my_tab1 (prod_code, state_code)","CREATE INDEX idx_my_tab1b ON my_tab1 (cust_code, date_code)")) # create two indices
+db(c("DROP INDEX idx_my_tab1a","DROP INDEX idx_my_tab1b")) # drop two indices
 db("DROP TABLE my_tab2") # drop the table which we created in above example #CREATE TABLE
 db(c("DROP TABLE my_tab1","DROP TABLE my_tab2"),c("sqlite1","sqlite2")) # multiple statements into multiple connections
 
@@ -142,7 +161,7 @@ db(c("DROP TABLE my_tab1","DROP TABLE my_tab2"),c("sqlite1","sqlite2")) # multip
 options("dwtools.verbose"=3)
 db.conns.names = c("sqlite1","sqlite2","sqlite3")
 
-# populate 2 tables in sqlite3
+# populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite")
 DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
 
 # populate 2 tables in each of connection, 6 tables created
@@ -166,12 +185,12 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 
 # populate star schema
 dw.star = dw.populate(scenario="star schema") # list of 5 tables, 1 fact table and 4 dimensions
-db(dw.star$time,"time") # save time to db
-db(dw.star$geography,"gegography") # save gegography to db
-db(dw.star$sales,"sales") # save sales FACT to db
+db(dw.star$TIME,"time") # save time to db
+db(dw.star$GEOGRAPHY,"geography") # save geography to db
+db(dw.star$SALES,"sales") # save sales FACT to db
 
 # data.table join in R directly on external SQL database
-db("gegography",key="state_code")[db("sales",key="state_code")] # geography[sales]
+db("geography",key="state_code")[db("sales",key="state_code")] # geography[sales]
 
 ## chaining including read and write directly on SQL database
 # 0. predefine aggregate function for later use
@@ -179,42 +198,46 @@ db("gegography",key="state_code")[db("sales",key="state_code")] # geography[sale
 # 2. aggregate to 2 dimensions
 # 3. save current state of data to db
 # 4. query geography dimension table from db
-# 5. left join geography dimension
+# 5. sales left join geography dimension
 # 6. aggregate to higher geography entity
 # 7. save current state of data to db
 # 8. query time dimension table from db
-# 8. left join time dimension
+# 8. sales left join time dimension
 # 9. aggregate to higher time entity
 # 10. save current state of data to db
-jj_aggr = quote(list(quantity=sum(quantity), value=sum(value)))
+jj_aggr = quote(list(amount=sum(amount), value=sum(value)))
 db("sales",key="state_code" # read fact table from db
-   )[,eval(jj_aggr),keyby=list(state_code, date_code) # aggr by state_code and date_code
+   )[,eval(jj_aggr),keyby=c("state_code","date_code") # aggr by state_code and date_code
      ][,db(.SD) # write to db, auto.table.name
-       ][,db("gegography",key="state_code" # read lookup geography dim from db
-             )[.SD # left join gegography
-               ][,eval(jj_aggr), keyby=list(date_code, region_name)] # aggr
+       ][,db("geography",key="state_code" # read lookup geography dim from db
+             )[.SD # left join geography
+               ][,eval(jj_aggr), keyby=c("date_code","region_name")] # aggr
          ][,db(.SD) # write to db, auto.table.name
            ][,db("time",key="date_code" # read lookup time dim from db
                  )[.SD # left join time
-                   ][, eval(jj_aggr), keyby=list(region_name, month_code, month_name)] # aggr
+                   ][, eval(jj_aggr), keyby=c("region_name","month_code","month_name")] # aggr
              ][,db(.SD) # write to db, auto.table.name
                ]
-# preview newly created tables
-(tbls = db("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('time','gegography','sales')"))
-if(nrow(tbls)>1) lapply(db(tbls$name),head) # query multiple tables from one connection
 
 ### Copy tables
 
-# dbCopy multiple tables from source to target #?dbCopy
+# dbCopy multiple tables from source to target # ?dbCopy
 dbCopy(
-  c("my_tab1","my_tab11"),"sqlite1", # source
-  c("my_tab12","my_tab13"),"sqlite2" # target
+  c("sales","geography","time"),"sqlite1", # source
+  c("sales","geography","time"),"csv1"     # target
 )
+(tbls = db("SELECT name FROM sqlite_master WHERE type='table'","sqlite2")) # sqlite2 check
 
-# Close connections -------------------------------------------------------
+# Disconnecting and cleaning workspace ------------------------------------------------------
 
-sapply(getOption("dwtools.db.conns"), function(x) dbDisconnect(x[["conn"]])) # close connection
-sapply(getOption("dwtools.db.conns"), function(x) file.remove(x[["dbname"]])) # remove db files
+sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) \%in\% db.conns.names],
+       function(x) dbDisconnect(x[["conn"]])) # close SQLite connections
+sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) \%in\% db.conns.names],
+       function(x) file.remove(x[["dbname"]])) # remove SQLite db files
 options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
+sapply(paste(c("my_tab1","sales","geography","time"),"csv",sep="."), function(x) file.remove(x)) # remove csv tables
+}
+\seealso{
+\link{dbCopy}
 }
 

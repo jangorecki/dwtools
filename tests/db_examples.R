@@ -22,13 +22,16 @@ csv1 = list(drvName = "csv")
 options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,csv1=csv1))
 
 # library(RPostgreSQL) # install.packages("RPostgreSQL")
-# psql <- list(drvName="PostgreSQL", host="localhost", port="5432", dbname="", user="", schema="")
-# psql$conn <- dbConnect(drv=psql$drvName, host=psql$host, port=psql$port, dbname=psql$dbname, user=psql$user, password="")
+# psql1 <- list(drvName="PostgreSQL", host="localhost", port="5432", dbname="dwtools", user="dwtools") # schema="" not tested
+# psql1$conn <- dbConnect(PostgreSQL(), host=psql1$host, port=psql1$port, dbname=psql1$dbname, user=psql1$user, password="dwtools_pass")
 # library(RMySQL) # install.packages("RMySQL")
-# mysql1 = list(drvName = "MySQL", dbname = "",user = "",pass = "",conn = "")
+# mysql1 = list(drvName="MySQL", host="localhost", port="3306", dbname="dwtools", user="dwtools")
+# mysql1$conn <-dbConnect(MySQL(), host=mysql1$host, port=mysql1$port, dbname=mysql1$dbname, user=mysql1$user, password="dwtools_pass")
 # library(RODBC) # install.packages("RODBC")
-# odbc1 <- list(drvName="ODBC", user="usr", dbname="dbn", dsn = "mydsn")
-# odbc1$conn <- odbcConnect(dsn = odbc1$dsn, uid=odbc1$user, pwd="mypass")
+# odbc1 <- list(drvName="ODBC", user="dwtools", dbname="dwtools", dsn="mydsn")
+# odbc1$conn <- odbcConnect(dsn=odbc1$dsn, uid=odbc1$user, pwd="dwtools_pass")
+# library(RCurl); library(jsonlite) # TODO: # install.packages(c("RCurl","jsonlite"))
+# cdb1 <- list(drvName="couchdb", host="localhost", port="5984", dbname="dwtools")
 
 # Basic usage --------------------------------------------------------------------
 
@@ -38,7 +41,7 @@ options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,
 
 db(DT,"my_tab1") # write to db, using default db connection (first in list)
 db(DT,"my_tab2","sqlite2") # WRITE to my_tab_alt to sqlite2 connection
-db(DT,"my_tab1.csv","csv1") # WRITE to my_tab1.csv
+db(DT,"my_tab1","csv1") # WRITE to my_tab1.csv
 r1 = db(DT) # write to auto named table in default db connection (first in list)
 attr(r1,'tablename',TRUE) # auto generated table name # ?auto.table.name
 r2 = db(DT,NULL,"sqlite2") # the same above but another connection
@@ -50,7 +53,7 @@ sapply(l, function(x) attr(x,"tablename",TRUE))
 
 db("my_tab1")
 db("my_tab2","sqlite2")
-db("my_tab1.csv","csv1") # READ from my_tab1.csv
+db("my_tab1","csv1") # READ from my_tab1.csv
 r1 = db("my_tab1","sqlite1",key=c("prod_code","cust_code","state_code","date_code")) # set key on result, useful on chaining, see 'Chaining data.table' examples below
 str(r1) # keys
 db(DT, "my_tab2") # CREATE TABLE just for below line example
@@ -107,9 +110,9 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 
 # populate star schema
 dw.star = dw.populate(scenario="star schema") # list of 5 tables, 1 fact table and 4 dimensions
-db(dw.star$time,"time") # save time to db
-db(dw.star$geography,"geography") # save geography to db
-db(dw.star$sales,"sales") # save sales FACT to db
+db(dw.star$TIME,"time") # save time to db
+db(dw.star$GEOGRAPHY,"geography") # save geography to db
+db(dw.star$SALES,"sales") # save sales FACT to db
 
 # data.table join in R directly on external SQL database
 db("geography",key="state_code")[db("sales",key="state_code")] # geography[sales]
@@ -120,41 +123,41 @@ db("geography",key="state_code")[db("sales",key="state_code")] # geography[sales
 # 2. aggregate to 2 dimensions
 # 3. save current state of data to db
 # 4. query geography dimension table from db
-# 5. left join geography dimension
+# 5. sales left join geography dimension
 # 6. aggregate to higher geography entity
 # 7. save current state of data to db
 # 8. query time dimension table from db
-# 8. left join time dimension
+# 8. sales left join time dimension
 # 9. aggregate to higher time entity
 # 10. save current state of data to db
-jj_aggr = quote(list(quantity=sum(quantity), value=sum(value)))
+jj_aggr = quote(list(amount=sum(amount), value=sum(value)))
 db("sales",key="state_code" # read fact table from db
-   )[,eval(jj_aggr),keyby=list(state_code, date_code) # aggr by state_code and date_code
+   )[,eval(jj_aggr),keyby=c("state_code","date_code") # aggr by state_code and date_code
      ][,db(.SD) # write to db, auto.table.name
        ][,db("geography",key="state_code" # read lookup geography dim from db
              )[.SD # left join geography
-               ][,eval(jj_aggr), keyby=list(date_code, region_name)] # aggr
+               ][,eval(jj_aggr), keyby=c("date_code","region_name")] # aggr
          ][,db(.SD) # write to db, auto.table.name
            ][,db("time",key="date_code" # read lookup time dim from db
                  )[.SD # left join time
-                   ][, eval(jj_aggr), keyby=list(region_name, month_code, month_name)] # aggr
+                   ][, eval(jj_aggr), keyby=c("region_name","month_code","month_name")] # aggr
              ][,db(.SD) # write to db, auto.table.name
                ]
-# preview newly created tables
-(tbls = db("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('time','geography','sales')"))
-if(nrow(tbls)>1) lapply(db(tbls$name),head) # query multiple tables from one connection
 
 ### Copy tables
 
-# dbCopy multiple tables from source to target #?dbCopy
+# dbCopy multiple tables from source to target # ?dbCopy
 dbCopy(
   c("sales","geography","time"),"sqlite1", # source
-  c("sales","geography","time"),"sqlite2"  # target
+  c("sales","geography","time"),"csv1"     # target
 )
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'","sqlite2")) # sqlite2 check
 
-# Close connections -------------------------------------------------------
+# Disconnecting and cleaning workspace ------------------------------------------------------
 
-sapply(getOption("dwtools.db.conns"), function(x) dbDisconnect(x[["conn"]])) # close connection
-sapply(getOption("dwtools.db.conns"), function(x) file.remove(x[["dbname"]])) # remove db files
+sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) %in% db.conns.names],
+       function(x) dbDisconnect(x[["conn"]])) # close SQLite connections
+sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) %in% db.conns.names],
+       function(x) file.remove(x[["dbname"]])) # remove SQLite db files
 options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
+sapply(paste(c("my_tab1","sales","geography","time"),"csv",sep="."), function(x) file.remove(x)) # remove csv tables

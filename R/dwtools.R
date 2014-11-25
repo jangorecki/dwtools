@@ -1,5 +1,14 @@
 #' @title Data Warehouse tools
 #' @description Extension for \link{data.table} package for Data Warehouse related functionalities.
+#' @details The core functions includes:
+#' \itemize{
+#' \item \link{db} as Extracting and Loading tool in ETL terms.
+#' \item \link{joinbyv} a denormalization of star schema and snowflake schema to flat table.
+#' \item \link{dw.populate} populate star schema data.
+#' \item \link{timing} measure timing and rows in-out.
+#' \item \link{CJI} custom indices for in-memory processing.
+#' }
+#' @note All dot prefixed parameters are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
 #' @docType package
 #' @import data.table digest
 #' @name dwtools
@@ -7,71 +16,76 @@ NULL
 
 # dw.populate -------------------------------------------------------------
 
-#' @title Populate data
-#' @description sample DW data. TODO better example data, k argument for groups size like in DT benchmark
-#' @param n integer facts volume
-#' @param k groups
-#' @param seed integer used in \code{set.seed}
+#' @title Populate DW data
+#' @description Populate sample DW data. By default \emph{star schema}, see \code{scenario} arg for others.
+#' @param N integer facts volume
+#' @param K groups size
+#' @param S integer used in \link{set.seed}
 #' @param scenario character in \code{c("fact","star schema","star schema denormalized")}
+#' @param setkey logical used only for scenario \code{"star schema"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},
 #' @param verbose integer print sub statuses
+#' @details The following case \code{scenario="star schema normalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star schema"} and later denormalize using \link{joinby} function where you can provide subsets of columns on each lookup.
 #' @export
-dw.populate <- function(n = 1e3, k = 10, seed = 1, scenario = c("fact","star schema","star schema denormalized"), verbose = getOption("dwtools.verbose")){
-  product <- 
-    data.table(prod_code = 1:16,
-               prod_name = paste("prod",letters[1:16]),
-               prod_group_code = rep(1:4,4), 
-               prod_group_name = paste("prod group",rep(letters[1:4],4)),
-               prod_family_code = rep(1:2,8), 
-               prod_family_name = paste("prod family",rep(letters[1:2],8)))
-  customer <- 
-    data.table(cust_code = 1:24, 
-               cust_name = paste("cust",letters[1:24]),
-               cust_mail = paste0("cust",1:24,"@mail.com"),
-               cust_hq_code = rep(1:3,8),
-               cust_hq_name = paste("cust hq",rep(letters[1:3],8)))
-  geography <- 
+#' @example tests/dw_populate_examples.R
+dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setkey = TRUE, verbose = getOption("dwtools.verbose")){
+  set.seed(S)
+  # N, K  taken from: https://github.com/Rdatatable/data.table/wiki/Benchmarks-%3A-Grouping#code-to-reproduce-the-timings-above-
+  CUSTOMER <- # grp size: K
+    data.table(cust_code = sprintf("id%03d",1:K), 
+               cust_name = paste0(sample(letters,K,TRUE),sample(letters,K,TRUE),sample(letters,K,TRUE)," ",sample(letters,K,TRUE),sample(letters,K,TRUE),sample(letters,K,TRUE)),
+               cust_mail = paste0("cust",1:K,"@mail.com"),
+               cust_active = sample(c(TRUE,FALSE),K,TRUE))
+  PRODUCT <- # grp size: 1:(N/K)
+    data.table(prod_code = 1:(N/K),
+               prod_name = paste0("prod ",1:(N/K),sample(letters,N/K,TRUE)),
+               prod_group_code = 1:((N/K)/5), 
+               prod_group_name = paste0("prod group ",1:((N/K)/5),sample(letters,(N/K)/5,TRUE)),
+               prod_family_code = 1:((N/K)/10), 
+               prod_family_name = paste0("prod family ",1:((N/K)/10),sample(letters,(N/K)/10,TRUE)))
+  GEOGRAPHY <- # grp size fixed to 50
     data.table(state_code = state.abb,
                state_name = state.name,
                division_code = as.integer(state.division),
                division_name = as.character(state.division),
                region_code = as.integer(state.region),
                region_name = as.character(state.region))
-  time <- 
-    data.table(date_code = seq(as.Date(paste0(year(Sys.Date())-1,"-01-01")),
-                               as.Date(paste0(year(Sys.Date()),"-12-31")),
+  TIME <- # grp size fixed to 1826
+    data.table(date_code = seq(as.Date("2010-01-01"),
+                               as.Date("2014-12-31"),
                                by = "1 day"))
-  time[,`:=`(month_code = month(date_code), 
+  TIME[,`:=`(month_code = month(date_code), 
              month_name = months(date_code),
              quarter_code = as.POSIXlt(date_code)$mon %/% 3L + 1L,
              year_code = year(date_code))]
-  set.seed(seed)
-  sales <- 
-    data.table(prod_code = sample(product[,prod_code], n, TRUE),
-               cust_code = sample(customer[,cust_code], n, TRUE),
-               state_code = sample(geography[,state_code], n, TRUE),
-               date_code = sample(time[,date_code], n, TRUE),
-               quantity = rnorm(n, 500, 200),
-               value = rnorm(n, n, 2000))
-  
-  TODO_to_use <- function(){
-    DT <- data.table(
-      id1 = sample(sprintf("id%03d",1:K), N, TRUE),      # large groups (char)
-      id2 = sample(sprintf("id%03d",1:K), N, TRUE),      # large groups (char)
-      id3 = sample(sprintf("id%010d",1:(N/K)), N, TRUE), # small groups (char)
-      id4 = sample(K, N, TRUE),                          # large groups (int)
-      id5 = sample(K, N, TRUE),                          # large groups (int)
-      id6 = sample(N/K, N, TRUE),                        # small groups (int)
-      v1 =  sample(5, N, TRUE),                          # int in range [1,5]
-      v2 =  sample(5, N, TRUE),                          # int in range [1,5]
-      v3 =  sample(round(runif(100,max=100),4), N, TRUE) # numeric e.g. 23.5749
-    )
-  } # TODO k arg
-  
+  # currency taken from: https://github.com/jangorecki/Rbitcoin/blob/master/R/dictionaries.R#L139
+  ct.dict = list(
+    crypto = c('BTC','LTC','NMC','FTC','NVC','PPC','TRC','XPM','XDG','XRP','XVN'),
+    fiat = c('USD','EUR','GBP','KRW','PLN','RUR','JPY','CHF','CAD','AUD','NZD','CNY','INR',
+             'TRY','SYP','GEL','AZN','IRR','KZT','NOK','SEK','ISK','MYR','DKK','BGN','HRK',
+             'CZK','HUF','LTL','RON','UAH','IDR','IQD','MNT','BRL','ARS','VEF','MXN')
+  )
+  CURRENCY <- # grp size fixed to 49
+    rbindlist(lapply(1:length(ct.dict), function(i) data.table(curr_code = ct.dict[[i]], currency_type = names(ct.dict[i]))))
+
+  SALES <- data.table(
+    cust_code = sample(CUSTOMER$cust_code, N, TRUE),
+    prod_code = sample(PRODUCT$prod_code, N, TRUE),
+    state_code = sample(GEOGRAPHY$state_code, N, TRUE),
+    date_code = sample(TIME$date_code, N, TRUE),
+    curr_code = sample(CURRENCY$curr_code, N, TRUE),
+    amount =  round(runif(N,max=1e3),4),
+    value =  round(runif(N,max=1e6),8)
+  )
+  if(scenario %in% c("star schema") && setkey){
+    invisible(mapply(FUN = function(join, by) setkeyv(join,by),
+                     join = list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), 
+                     by = list("cust_code","prod_code","state_code","date_code","curr_code"), SIMPLIFY=FALSE))
+  }
   DT = switch(scenario,
-              "fact" = sales,
-              "star schema" = list(sales=sales,product=product,customer=customer,geography=geography,time=time),
-              "denormalized star schema" = joinbyv(master=sales, join=list(product=product,customer=customer,geography=geography,time=time), by=list("prod_code","cust_code","state_code","date_code")))
-  if(verbose > 0) cat(as.character(Sys.time()),": dw.populate: processed scenario '",scenario,"' volume n: ",n,", groups k:",k,"\n",sep="")
+              "fact" = SALES,
+              "star schema" = list(SALES=SALES,CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY),
+              "denormalized star schema" = joinbyv(master=SALES, join=list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), by=list("cust_code","prod_code","state_code","date_code","curr_code")))
+  if(verbose > 0) cat(as.character(Sys.time()),": dw.populate: processed scenario '",scenario,"' volume N: ",N,", groups K: ",K,"\n",sep="")
   return(DT)
 }
 
@@ -79,18 +93,23 @@ dw.populate <- function(n = 1e3, k = 10, seed = 1, scenario = c("fact","star sch
 
 #' @title Measure timing
 #' @description Collect timings and nrows when possible.
+#' @param expr expression
+#' @param nrow_in integer manually provided input object nrow
+#' @param .timing logical
+#' @param .timing.name character
+#' @param .timing.conn.name character
 #' @details Use option \code{options("dwtools.timing"=TRUE)} to turn on timing measurment in functions which supports timing measurement. To log timing to db connection, setup \code{options("dwtools.db.conns"}, provide connectio name to \code{options("dwtools.timing.conn.name"="sqlite1")} and target table \code{options("dwtools.timing.name"="mylogtable")} otherwise timing will be returned as \code{"timing"} attribute to the expression result.
 #' @export
 timing <- function(expr, nrow_in = NA_integer_,
                    .timing = getOption("dwtools.timing"),
                    .timing.name = getOption("dwtools.timing.name"),
                    .timing.conn.name = getOption("dwtools.timing.conn.name")){
-  if(!.timing) return(expr)
+  if(!.timing) return(eval.parent(expr))
   subx = substitute(expr)
   l = system.time(r <- eval.parent(expr))
   x = setDT(as.list(l))[,list(timestamp = Sys.time(),
                               dwtools_session = getOption("dwtools.session"),
-                              expr = subx,
+                              expr = paste(deparse(subx, width.cutoff=500L),collapse="\n"),
                               expr_crc32 = digest(subx,algo="crc32"),
                               nrow_in = nrow_in,
                               nrow_out = nrowDT(r),
@@ -99,9 +118,9 @@ timing <- function(expr, nrow_in = NA_integer_,
                               elapsed = elapsed,
                               user_child = user.child,
                               sys_child = sys.child)]
-  if(!is.null(.timing.name) && !is.null(.timing.conn.name)) db(x, name=.timing.name, conn.name=.timing.conn.name, .timing=FALSE)
-  else eval.parent(setattr(r, "timing", x))
-  return(x)
+  if(!is.null(.timing.name) && !is.null(.timing.conn.name)) db(x, .timing.name, .timing.conn.name, timing=FALSE)
+  else setattr(r, "timing", x)
+  return(r)
 }
 
 # technical ---------------------------------------------------------------

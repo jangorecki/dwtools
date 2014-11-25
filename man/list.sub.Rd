@@ -6,7 +6,7 @@
 list.sub(x, i, fill = NULL)
 }
 \description{
-take \code{i} element of the list \code{x} if not present or NULL then return \code{fill}.
+Take \code{i} element of the list \code{x} if not present or NULL then return \code{fill}. Used in \code{db} for \dots argument processing.
 }
 \keyword{internal}
 

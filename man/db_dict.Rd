@@ -3,13 +3,10 @@
 \alias{db_dict}
 \title{db_dict}
 \usage{
-db_dict(drvName)
-}
-\arguments{
-\item{drvName}{character vector of}
+db_dict()
 }
 \description{
-Dictionary about save, load, postprocess, etc. for each db driver.
+Dictionary for databases drivers write, read, get, send, schematable, preprocess, postprocess.
 }
 \keyword{internal}
 

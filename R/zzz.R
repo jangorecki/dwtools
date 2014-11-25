@@ -28,8 +28,7 @@
   options("dwtools.db.auto.table.name.ncol"=4) # auto.table.name
   options("dwtools.db.auto.table.name.nchar"=4) # auto.table.name
   
-  options("dwtools.db.dict" = db_dict())
-  #options("dwtools.db.conns" = list(sqlite1=sqlite1, sqlite2=sqlite2, postgres1=postgres1, mssql1=mssql1, csv1=csv1))
+  options("dwtools.db.dict"=db_dict()) # db_dict
 }
 
 .onAttach <- function(libname, pkgname){

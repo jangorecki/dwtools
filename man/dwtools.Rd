@@ -7,4 +7,17 @@
 \description{
 Extension for \link{data.table} package for Data Warehouse related functionalities.
 }
+\details{
+The core functions includes:
+\itemize{
+\item \link{db} as Extracting and Loading tool in ETL terms.
+\item \link{joinbyv} a denormalization of star schema and snowflake schema to flat table.
+\item \link{dw.populate} populate star schema data.
+\item \link{timing} measure timing and rows in-out.
+\item \link{CJI} custom indices for in-memory processing.
+}
+}
+\note{
+All dot prefixed parameters are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
+}
 

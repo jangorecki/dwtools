@@ -2,65 +2,102 @@
 # db dict -----------------------------------------------------------------
 
 #' @title db_dict
-#' @description Dictionary about save, load, postprocess, etc. for each db driver.
-#' @param drvName character vector of 
+#' @description Dictionary for databases drivers write, read, get, send, schematable, preprocess, postprocess.
 #' @keywords internal
-db_dict <- function(drvName){
-  db_list = list()
-  callIfNamespace <- function(package, expr, silent=FALSE, silent.expr=NULL){
-    if(requireNamespace("RSQLite", quietly=TRUE)){
-      return(eval.parent(expr))
-    }
-    else if(silent){
-      return(eval.parent(silent.expr))
-    }
-    else if(!silent){
-      stop(paste0("Unable to load ",package," namespace. You might have not installed required package. Try: install.packages('",package,"')"))      
-    }
-  } # not used atm
+db_dict <- function(){
   db.dict = data.table(
-    drvName = c("SQLite","PostgreSQL","ODBC","csv"),
-    package = c("RSQLite","RPostgreSQL","RODC","data.table"),
+    drvName = c("SQLite","PostgreSQL","MySQL","Oracle","ODBC","couchdb","csv"),
+    package = c("RSQLite","RPostgreSQL","RMySQL","ROracle","RODC","RCurl","data.table"),
     write = list(
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
-      function(conn, name, value) sqlSave(channel=conn, dat=value, tablename=name, rownames=FALSE),
-      function(conn, name, value) write.csv(x=value, file=name, row.names=FALSE)
+      function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
+      function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
+      function(conn, name, value) as.logical(sqlSave(channel=conn, dat=value, tablename=name, rownames=FALSE)),
+      function(conn, name, value){
+        stop("function not ready")
+        library(jsonlite)
+        library(RCurl)      
+        host = "127.0.0.1"
+        port = "5984"
+        dbname = "dwtools"
+        
+        # write
+        name = "my_dt"
+        DT = data.table(a = 1:5, b = letters[1:5])
+        rawUrl = httpPUT(paste0("http://",host,":",port,"/",dbname,"/",name),
+                         httpheader=c('Content-Type'='application/json'),
+                         postfields=toJSON(DT))
+        fromJSON(rawUrl)
+        
+        # read
+        name = "my_dt"
+        res = fromJSON(httpGET(paste0("http://",host,":",port,"/",dbname,"/",name)))
+        tech.res = copy(res[names(res) %like% "^_"])
+        res[names(res) %like% "^_"] = NULL
+        setDT(res)
+        
+        # get/send
+        x = "select * from tablea"
+        res = fromJSON(httpGET(paste0("http://",host,":",port,"/",dbname,"/",x)))
+        tech.res = copy(res[names(res) %like% "^_"])
+        res[names(res) %like% "^_"] = NULL
+        setDT(res)
+      },
+      function(conn, name, value) if(is.null(write.csv(x=value, file=name, row.names=FALSE))) TRUE else FALSE
     ),
     read = list(
       function(conn, name) dbReadTable(conn=conn, name=name),
       function(conn, name) dbReadTable(conn=conn, name=name),
+      function(conn, name) dbReadTable(conn=conn, name=name),
+      function(conn, name) dbReadTable(conn=conn, name=name),
       function(conn, name) sqlQuery(channel=conn, query=paste0("SELECT * FROM ",name)),
+      function(conn, name) NULL,
       function(conn, name) fread(input=name)
     ),
     get = list(
       function(conn, statement) dbGetQuery(conn=conn, statement=statement),
       function(conn, statement) dbGetQuery(conn=conn, statement=statement),
+      function(conn, statement) dbGetQuery(conn=conn, statement=statement),
+      function(conn, statement) dbGetQuery(conn=conn, statement=statement),
       function(conn, statement) sqlQuery(channel=conn, query=statement),
+      function(conn, statement) NULL,
       function(conn, statement) stop("not possible to `get` on csv, provide filename to `x` to invoke `read` instead of `get`", call.=FALSE)
     ),
     send = list(
       function(conn, statement) dbSendQuery(conn=conn, statement=statement),
       function(conn, statement) dbSendQuery(conn=conn, statement=statement),
+      function(conn, statement) dbSendQuery(conn=conn, statement=statement),
+      function(conn, statement) dbSendQuery(conn=conn, statement=statement),
       function(conn, statement) sqlQuery(channel=conn, query=statement),
+      function(conn, statement) NULL,
       function(conn, statement) stop("not possible to `send` to csv", call.=FALSE)
     ),
-    tablename = list( # TODO, split "schema.table" to c("schema","table") for postgres and possibily others
-      function(x) strsplit(x,".",TRUE)[[1]],
+    tablename = list(
+      function(x) x,
+      function(x){ r = strsplit(x,".",TRUE)[[1]]; if(length(r) > 2) stop("Table name should contain at most one dot for schema.table mapping") else r },
       function(x) x,
       function(x) x,
-      function(x) x
+      function(x) x,
+      function(x) x,
+      function(x) paste(x,"csv",sep=".")
     ),
     preprocess = list(
-      function(DT) DT[,lapply(l, function(x) if(is.POSIXt(x)) as.integer(x) else if(is.function(x)) x else x)],
-      function(DT) DT[,lapply(l, function(x) if(is.function(x)) x else x)],
-      function(DT) DT[,lapply(l, function(x) if(is.function(x)) x else x)],
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
       function(DT) DT
     ),
     postprocess = list(
-      function(DT) DT[,lapply(l, function(x) if(int.is.POSIXct(x)) as.POSIXct(x) else if(is.function(x)) x else x)],
-      function(DT) DT[,lapply(l, function(x) if(is.function(x)) x else x)],
-      function(DT) DT[,lapply(l, function(x) if(is.function(x)) x else x)],
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
+      function(DT) DT,
       function(DT) DT
     ),
     key = "drvName"
@@ -132,7 +169,7 @@ is.table.name <- function(x){
 }
 
 #' @title list.sub
-#' @description take \code{i} element of the list \code{x} if not present or NULL then return \code{fill}.
+#' @description Take \code{i} element of the list \code{x} if not present or NULL then return \code{fill}. Used in \code{db} for \dots argument processing.
 #' @keywords internal
 list.sub <- function(x, i, fill=NULL){
   if(length(x)<i || is.null(x[[i]])) r = fill
@@ -143,9 +180,14 @@ list.sub <- function(x, i, fill=NULL){
 # db -------------------------------------------------------------------
 
 #' @title Simple database interface
+#' @description Common db interface for DBI, RODBC and other custom defined off-memory storage. So far it was tested with SQLite, postgres and csv.
 #' @param x data.table (to save in db) or character of table names or character of sql commands.
 #' @param \dots if \code{x} is data.table then \dots expects character table names and character connection names else \dots expects only character connection names.
 #' @param key character vector to be used to set key, cannot be mixed with multiple connections queries, see examples for chaining in DT syntax.
+#' @param .db.preprocess logical.
+#' @param .db.postprocess logical.
+#' @param .db.conns list of connections uniquely named.
+#' @param .db.dict data.table db interface dictionary.
 #' @param timing logical measure timing of queries, read \link{timing}.
 #' @param verbose integer, if greater than 0 then print debugging messages.
 #' @details Function is designed to be slim and chainable in data.table \code{`[`} operator.
@@ -155,19 +197,25 @@ list.sub <- function(x, i, fill=NULL){
 #' \item \code{dbGetQuery} - \code{x} character with spaces and starts with \code{"SELECT "}: \code{db("SELECT col1 FROM my_tab1")}
 #' \item \code{dbSendQuery} - \code{x} character with spaces and \strong{not} starts with \code{"SELECT "}: \code{db("UPDATE my_tab1 SET col1 = NULL")}
 #' }
-#' @return In case of \emph{dbWriteTable/dbReadTable/dbGetQuery} the data.table object (possibly with attributes), in case of \emph{dbSendQuery} the send query results,
+#' @return In case of \strong{write / read / get} the data.table object (possibly with some extra attributes), in case of \strong{send} action the send query results.
 #' @section Multiple connections:
 #' Table names, sql commands, connection names can be character vectors. It allows processing into multiple connections and tables at once. The list of results will be returned, it will be named by the connection names, so if the connecion name was recycled (e.g. \code{db(c("my_tab1","my_tab2"))}) then there will be duplicated names in the resulted list.
-#' @section DB interface unifications:
-#' TODO: You can provide table name as \code{"my_schema1.my_tab1"} and it will be processed according to target db (e.g. for postgres: \code{c("my_schema1","my_tabl1")}).
-#' SQL statements are not unified.
-#' @section Limitation:
-#' Table names must not contains spaces (which are accepted by some db vendors).
-#' SQL send statements should contains spaces. E.g. sqlite \code{.tables} command will need to be written as \code{db("SELECT * FROM sqlite_master WHERE type='table'")}.
+#' @section Limitations:
+#' Table names must not contains spaces (which are accepted by some db vendors).\cr
+#' SQL send statements should contains spaces. E.g. sqlite \code{.tables} command will need to be written as \code{db("SELECT * FROM sqlite_master WHERE type='table'")}.\cr
+#' Below are the per driver name limitations:
+#' \itemize{
+#' \item \code{csv}: No \strong{get} and \strong{send} actions. Extension \emph{.csv} is automatically added to provided table name character (or to \link{auto.table.name} in table name was not provided).
+#' }
 #' @section Auto table name:
-#' If writing to db and table name is missing or NULL then the \link{auto.table.name} will be used. The table name used in \emph{dbWriteTable} will be provided as \code{"tablename"} attribute of the function result so it can be catched for later use.
-#' @section DB migration:
-#' There preprocessing and postprocessing functions available so the classes of the data returned by external databases can be also integrated. This gives R ability to act as data hub and gain value as ETL tool.
+#' If writing to db and table name is missing or NULL then the \link{auto.table.name} will be used. The table name used in \strong{write} will be provided as \code{"tablename"} attribute of the function result so it can be catched for later use.
+#' @section DB interface dictionary:
+#' If you read/write to non-default schema use the \code{"my_schema1.my_tab1"} table names, it will be translated to expected format for target db (e.g. for postgres: \code{c("my_schema1","my_tabl1")}).\cr
+#' SQL statements are not unified.\cr
+#' There are preprocessing and postprocessing functions available per defined db driver. Those functions can be used for seemless integration in case if write/read to db lose classes of the data.\cr
+#' This gives R ability to act as data hub and gain value as ETL tool.\cr
+#' You can add new interfaces by extending \link{db_dict}. Pull Requests are welcome.
+#' @seealso \link{dbCopy}
 #' @export
 #' @example tests/db_examples.R
 db <- function(x, ..., key,
@@ -184,8 +232,8 @@ db <- function(x, ..., key,
     stop("x argument must be provided to db function")
   } # stop on missing 'x'
   if(is.null(.db.conns) || length(.db.conns)==0){
-    if(!getOption("dwtools.db.silent.drvName.csv",FALSE)) warning("You must define 'dwtools.db.conns' option to route db requests, `options('dwtools.db.conns'=list(source1=source1,source2=source2))`. ?db")
-    .db.conns = list(csv1 = list(drvName = "csv", conn = NULL))
+    if(!getOption("dwtools.db.silent.drvName.csv",FALSE)) warning("You must define 'dwtools.db.conns' option to route db requests, `options('dwtools.db.conns'=list(source1=source1,source2=source2))`. Read ?db examples")
+    .db.conns = list(csv1 = list(drvName = "csv"))
   } # warning if connections not defined, set csv temp file
   if(is.list(.db.conns) && !is.list(.db.conns[[1]])){
     stop("Correct 'dwtools.db.conns' option should be list of uniquely named lists each by connection, even if there is only one. Fix your connections definition, see examples.")
@@ -198,8 +246,8 @@ db <- function(x, ..., key,
    
   if(is.data.table(x)){
     action = "write"
-    name = list.sub(dots,1,auto.table.name(names(x)))
-    conn.name = list.sub(dots,2,names(.db.conns[1]))
+    name = list.sub(x=dots,i=1,fill=auto.table.name(names(x)))
+    conn.name = list.sub(x=dots,i=2,fill=names(.db.conns[1]))
     sql = list(NULL)
     visibility = expression(invisible(x[])) # closing function, write returns invisibly
     if(length(conn.name)==1 && length(name)>1) conn.name = rep(conn.name,length(name))
@@ -207,7 +255,7 @@ db <- function(x, ..., key,
   else if(is.character(x) && is.table.name(x)){
     action = "read"
     name = x
-    conn.name = list.sub(dots,1,names(.db.conns[1]))
+    conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1])) # 
     sql = list(NULL)
     visibility = expression(x[]) # closing function, get returns visibily
     if(length(conn.name)==1 && length(name)>1) conn.name = rep(conn.name,length(name))
@@ -215,7 +263,7 @@ db <- function(x, ..., key,
   else if(is.character(x) && is.sql(x) && is.sql.get(x)){
     action = "get"
     name = list(NULL)
-    conn.name = list.sub(dots,1,names(.db.conns[1]))
+    conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1]))
     sql = x
     visibility = expression(x[]) # closing function, query returns visibily
     if(length(conn.name)==1 && length(sql)>1) conn.name = rep(conn.name,length(sql))
@@ -223,7 +271,7 @@ db <- function(x, ..., key,
   else if(is.character(x) && is.sql(x) && is.sql.send(x)){
     action = "send"
     name = list(NULL)
-    conn.name = list.sub(dots,1,names(.db.conns[1]))
+    conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1]))
     sql = x
     visibility = expression(invisible(x)) # closing function, send returns visibily
     if(length(conn.name)==1 && length(sql)>1) conn.name = rep(conn.name,length(sql))
@@ -234,54 +282,42 @@ db <- function(x, ..., key,
   
   #### Define single execution
   # write: 1 DT save to 1 table in 1 conn
-  # read: 1 tablename in 1 conn
+  # read: 1 table in 1 conn
   # get/send: 1 sql in 1 conn
   db.one <- function(conn.name, sql, name, action, DT, .db.conns, .db.dict, timing, verbose){
     .db.conn = .db.conns[[conn.name]]
-    msg <- cat(as.character(Sys.time()),": db.one")
+    msg <- paste0(as.character(Sys.time()),": db.one")
     if(getOption("dwtools.db.one.debug",FALSE)) browser()
     # action
     if(action=="write"){ # write
-      if(.db.preprocess){
-        DT = tryCatch(
-          .db.dict[.(.db.conn$drvName), preprocess[[1]]](DT)
-          , error = function(e) stop(paste0("Error in the pre processing function for ",conn.name,", try preprocess function manually on the DT you want to save."), call.=FALSE)
-        )
-      }
-      if(verbose > 0) msg <- paste0(msg,"; write into db table ",paste(name,collapse=".")," in ",conn.name)
-      r = .db.dict[.(.db.conn$drvName), write[[1]]](conn = .db.conn$conn, name = name, value = DT)
-      if(length(r)) stop(paste0("Writing to db connection '",conn.name,"' results status FALSE."))
-      # r = .db.dict[.(.db.conn$drvName), write[[1]](conn = .db.conn$conn, name = schemaname[[1]](name), value = DT)]
-      # TO DO: name convert to expected format "asd.asd" or c("asd","asd")
+      if(verbose > 0) msg <- paste0(msg,"; write into db table ",name," in ",conn.name)
+      r = .db.dict[.(.db.conn$drvName), write[[1]](conn = .db.conn$conn, name = tablename[[1]](name), value = if(.db.preprocess) preprocess[[1]](DT) else DT)]
       setattr(DT,"tablename",name)
     } # write
     else if(action=="read"){ # read
-      if(verbose > 0) msg <- paste0(msg,"; read from db table ",paste(name,collapse=".")," in ",conn.name)
-      DT = .db.dict[.(.db.conn$drvName), read[[1]]](conn = .db.conn$conn, name = name) # TODO name translation to c("schema","tbl")
-      setDT(DT)
-      if(.db.postprocess){
-        DT = tryCatch(
-          .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
-          , error = function(e) stop(paste0("Error in the post processing function for ",conn.name,", use .db.postprocess = FALSE and try postprocess function manually."), call.=FALSE)
-        )
+      if(verbose > 0) msg <- paste0(msg,"; read from db table ",name," in ",conn.name)
+      DT = .db.dict[.(.db.conn$drvName), read[[1]](conn = .db.conn$conn, name = tablename[[1]](name))]
+      #DT = .db.dict[.(.db.conn$drvName), read[[1]]](conn = .db.conn$conn, name = name) # TODO name translation to c("schema","tbl") # TODO remove
+      if(is.data.frame(DT)){
+        setDT(DT)
+        if(.db.postprocess) DT = .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
       }
     } # read
     else if(action=="get"){ # get
       if(verbose > 0) msg <- paste0(msg,"; get from db statement@",conn.name,": ",sql)
       DT = .db.dict[.(.db.conn$drvName), get[[1]]](conn = .db.conn$conn, statement = sql)
-      setDT(DT)
-      if(.db.postprocess){
-        DT = tryCatch(
-          .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
-          , error = function(e) stop(paste0("Error in the post processing function for ",conn.name,", use .db.postprocess = FALSE and try postprocess function manually."), call.=FALSE)
-        )
+      if(is.data.frame(DT)){
+        setDT(DT)
+        if(.db.postprocess) DT = .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
       }
     } # get
     else if(action=="send"){ # send
       if(verbose > 0) msg <- paste0(msg,"; send to db statement@",conn.name,": ",sql)
-      tryCatch(expr = {
-        DT = .db.dict[.(.db.conn$drvName), send[[1]]](conn = .db.conn$conn, statement = sql) # here DT is not a DT but send query results
-      }, error = function(e) browser())
+      DT = .db.dict[.(.db.conn$drvName), send[[1]](conn = .db.conn$conn, statement = sql)] # here DT may not a DT but send query results
+      if(is.data.frame(DT)){
+        setDT(DT)
+        if(.db.postprocess) DT = .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
+      }
       } # send
     if(verbose > 0) cat(msg,"; processed ",action," in ",conn.name,"\n",sep="")
     return(DT)
@@ -296,12 +332,12 @@ db <- function(x, ..., key,
   # 1 table in 1 conn
   # 1 table in X conns
   # X tables in X conns
-  # X tables in 1 conn # TODO test
+  # X tables in 1 conn
   # get/send:
   # 1 sql in 1 conn
   # 1 sql in X conns
   # X sqls in X conns
-  # X tables in 1 conn # TODO test
+  # X tables in 1 conn
   
   N = length(conn.name)
   msg <- paste0(as.character(Sys.time()),": db")
@@ -345,13 +381,16 @@ db <- function(x, ..., key,
 # db migration --------------------------------------------------------
 
 #' @title Copy tables between databases
-#' @param source.table.name
+#' @param source.table.name character vector of tables names to copy from source connection
+#' @param source.conn.name character scalar
+#' @param target.table.name character vector of tables names to copy to target connection
+#' @param target.conn.name character scalar
+#' @param verbose integer status messages
 #' @export
 dbCopy <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, verbose=getOption("dwtools.verbose")){
   stopifnot(length(source.conn.name)==1 && length(target.conn.name)==1)
   stopifnot(length(source.table.name)==length(target.table.name))
   # do one copy
-  
   dbCopy.one <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, verbose){
     # TODO pre and post processing
     x = db(
@@ -365,5 +404,5 @@ dbCopy <- function(source.table.name, source.conn.name, target.table.name, targe
   # batch copy
   mx = mapply(dbCopy.one, source.table.name, target.table.name, MoreArgs = list(source.conn.name=source.conn.name, target.conn.name=target.conn.name, verbose=verbose-1), SIMPLIFY = FALSE)
   if(verbose > 0) cat(paste0(as.character(Sys.time()),": dbCopy; copy from ",paste(source.conn.name,target.conn.name,sep=" to ")," completed for ",length(target.table.name)," tables"),"\n",sep="")
-  mx
+  invisible(mx)
 }
