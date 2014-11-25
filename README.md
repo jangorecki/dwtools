@@ -1,32 +1,29 @@
-dwtools
-=======
+# dwtools
 
-**Current version: pre 1.0.0**
+**Current version: pre 1.0.0**  
 
-Data Warehouse tools. Extensions to `data.table` functionalities. See below for core functions in the package. Report any bug as issues on github.
+Data Warehouse tools. Extension for `data.table` package for Data Warehouse related functionalities.  
+See below for core functions in the package.  
+Report any bug as issues on github.
 
-Installation
-------------
+## Installation
 
-``` {.r}
+```r
 devtools::install_github("jangorecki/dwtools")
 ```
 
-Core functions
---------------
+## Core functions
 
-``` {.r}
+```r
 library(dwtools)
-#> Loading required package: data.table
-#> dwtools (pre 1.0.0)
+options("dwtools.verbose" = 0) # 1+ for status message
 ```
 
 ### dw.populate
-
-Not core function but it will populate data for the next examples.
+Not core function but it will populate data for the next examples.  
 `?dw.populate`
 
-``` {.r}
+```r
 X = dw.populate(scenario="star schema")
 SALES = X$SALES
 GEOGRAPHY = X$GEOGRAPHY
@@ -63,15 +60,15 @@ head(GEOGRAPHY)
 ```
 
 ### db
-
-Function provides simple database interface. It handles DBI drivers, was tested with Postgres and SQLite, also RODBC (any odbc connection) might be supported already but it was not tested. NoSQL support in dev.
-In ETL terms where `data.table` serves as `transformation` layer, the dwtools `db` function serves `extraction` and `loading` layers.
+Function provides simple database interface.  
+It handles DBI drivers (tested on Postgres and SQLite), RODBC (any odbc connection, not yet tested) and csv files as tables.  
+NoSQL couchdb support in dev.  
+In ETL terms where `data.table` serves as **Transformation** layer, the dwtools `db` function serves **Extraction** and **Loading** layers.  
 `?db`
 
-``` {.r}
+```r
 # setup db connections
 library(RSQLite) # install.packages("RSQLite")
-#> Loading required package: DBI
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
@@ -99,16 +96,14 @@ SALES[,.SD,keyby=list(state_code) # setkey
              ], nomatch=0 # inner join
         ]
 ```
-
-`db` function accepts vector of sql statements / table names to allow batch processing.
+`db` function accepts vector of sql statements / table names to allow batch processing.  
 In case of tables migration see `?dbCopy`.
 
 ### joinbyv
-
-Denormalization of star schema and snowflake schema to flat fact table.
+Denormalization of star schema and snowflake schema to flat fact table.  
 `?joinbyv`
 
-``` {.r}
+```r
 # denormalize 
 DT = joinbyv(
   master = X$SALES,
@@ -132,28 +127,19 @@ print(names(DT))
 ```
 
 ### CJI
+Also known as *Nth setkey*.  
+Creates custom indices for a data.table object. May require lot of memory.  
 
-Also known as *Nth setkey*.
-Creates custom indices for a data.table object. May require lot of memory.
-
-``` {.r}
+```r
 # not yet ready
 # CJI()
 ```
 
-License
--------
-
-GPL-3.
-Donations are welcome and will be partially forwarded to dependencies of dwtools.
+## License
+GPL-3.  
+Donations are welcome and will be partially forwarded to dependencies of dwtools.  
 `19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN`.
 
-``` {.r}
-dbDisconnect(conn=sqlite1$conn)
-file.remove(c("sqlite1.db","geography.csv"))
-```
-
-Contact
--------
-
+## Contact
 `J.Gorecki@wit.edu.pl`
+
