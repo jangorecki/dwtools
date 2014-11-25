@@ -23,7 +23,7 @@ dw.populate(N = 1e+05, K = 100, S = 1, scenario = "star schema",
 Populate sample DW data. By default \emph{star schema}, see \code{scenario} arg for others.
 }
 \details{
-The following case \code{scenario="star schema normalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star schema"} and later denormalize using \link{joinby} function where you can provide subsets of columns on each lookup.
+The following case \code{scenario="star schema normalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star schema"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
 }
 \examples{
 suppressPackageStartupMessages(library(data.table))

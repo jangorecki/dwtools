@@ -2,6 +2,7 @@
 
 export(db)
 export(dbCopy)
+export(joinbyv)
 export(dw.populate)
 export(timing)
 import(data.table)

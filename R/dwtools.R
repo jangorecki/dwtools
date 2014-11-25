@@ -24,7 +24,7 @@ NULL
 #' @param scenario character in \code{c("fact","star schema","star schema denormalized")}
 #' @param setkey logical used only for scenario \code{"star schema"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},
 #' @param verbose integer print sub statuses
-#' @details The following case \code{scenario="star schema normalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star schema"} and later denormalize using \link{joinby} function where you can provide subsets of columns on each lookup.
+#' @details The following case \code{scenario="star schema normalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star schema"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
 #' @export
 #' @example tests/dw_populate_examples.R
 dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setkey = TRUE, verbose = getOption("dwtools.verbose")){
