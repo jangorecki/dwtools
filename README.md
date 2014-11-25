@@ -5,6 +5,13 @@ dwtools
 
 Data Warehouse tools. Extensions to `data.table` functionalities. See below for core functions in the package. Report any bug as issues on github.
 
+Installation
+------------
+
+``` {.r}
+devtools::install_github("jangorecki/dwtools")
+```
+
 Core functions
 --------------
 
@@ -39,7 +46,9 @@ head(SALES)
 
 ### db
 
-Function provides simple database interface. It handles DBI drivers, was tested with Postgres and SQLite, also RODBC (any odbc connection) might be supported already but it was not tested. NoSQL support in dev. In ETL terms where `data.table` serves as `transformation` layer, the dwtools `db` function serves `extraction` and `loading` layers.
+Function provides simple database interface. It handles DBI drivers, was tested with Postgres and SQLite, also RODBC (any odbc connection) might be supported already but it was not tested. NoSQL support in dev.
+In ETL terms where `data.table` serves as `transformation` layer, the dwtools `db` function serves `extraction` and `loading` layers.
+`?db`
 
 ``` {.r}
 # setup db connection
@@ -121,8 +130,6 @@ setkeyv(SALES,"state_code")[,db("geography",key="state_code")[.SD]][0:6] # [...]
 #> 4:        West     id045       694 2013-07-18       ISK 456.1536 588006.9
 #> 5:        West     id033       698 2014-06-17       SYP 667.7494 672761.0
 #> 6:        West     id076       857 2014-07-11       EUR 986.6756 626315.0
-
-# help: ?db
 ```
 
 `db` accepts vector of sql statements / table names to allow batch processing. In case of tables migration see `?dbCopy`.
@@ -130,6 +137,7 @@ setkeyv(SALES,"state_code")[,db("geography",key="state_code")[.SD]][0:6] # [...]
 ### joinbyv
 
 Denormalization of star schema and snowflake schema to flat fact table.
+`?joinbyv`
 
 ``` {.r}
 # populate star schema
@@ -239,8 +247,6 @@ print(DT)
 #> 4: 896.9127 153436.35
 #> 5: 844.4536 419426.22
 #> 6: 933.0257 752510.56
-
-# help: ?joinbyv
 ```
 
 ### CJI
@@ -251,14 +257,6 @@ Creates custom indices for a data.table object. May require lot of memory.
 ``` {.r}
 # not yet ready
 # CJI()
-```
-
-Installation
-------------
-
-``` {.r}
-# install dwtools
-devtools::install_github("jangorecki/dwtools")
 ```
 
 License

@@ -1,0 +1,106 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+---
+
+# dwtools
+
+```{r init.tech, echo = FALSE}
+knitr::opts_chunk$set(collapse=TRUE,comment="#>",fig.path="README-")
+```
+
+**Current version: pre 1.0.0**  
+
+Data Warehouse tools. Extensions to `data.table` functionalities. See below for core functions in the package. Report any bug as issues on github.
+
+## Installation
+
+```{r installation, eval=FALSE}
+devtools::install_github("jangorecki/dwtools")
+```
+
+## Core functions
+
+```{r init}
+library(dwtools)
+```
+
+### dw.populate
+
+Not core but it will populate data for the next examples
+
+```{r dw.populate}
+SALES = dw.populate(scenario="fact")
+head(SALES)
+```
+
+### db
+
+Function provides simple database interface. It handles DBI drivers, was tested with Postgres and SQLite, also RODBC (any odbc connection) might be supported already but it was not tested. NoSQL support in dev.  
+In ETL terms where `data.table` serves as `transformation` layer, the dwtools `db` function serves `extraction` and `loading` layers.  
+`?db`
+
+```{r db}
+# setup db connection
+library(RSQLite) # install.packages("RSQLite")
+sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
+options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
+
+# write to db
+db(SALES,"sales_table")
+# read from from db
+db("sales_table")[0:6]
+# query from db # not supported for csv driver
+db("SELECT * FROM sales_table")[0:6]
+# send to db # not supported for csv driver
+db("DROP TABLE sales_table")
+
+# populate dimension and save to db
+GEOGRAPHY = dw.populate(scenario="star schema")$GEOGRAPHY
+db(GEOGRAPHY,"geography")
+rm(GEOGRAPHY)
+# lookup from db and setkey
+db("geography",key="state_code")[0:6]
+# all the above can be chained, including keys
+setkeyv(SALES,"state_code")[,db("geography",key="state_code")[.SD]][0:6] # [...][...]
+```
+
+`db` accepts vector of sql statements / table names to allow batch processing.
+In case of tables migration see `?dbCopy`.
+
+### joinbyv
+
+Denormalization of star schema and snowflake schema to flat fact table.  
+`?joinbyv`
+
+```{r joinbyv}
+# populate star schema
+X = dw.populate()
+lapply(X, head)
+# denormalize 
+DT = joinbyv(master=X$SALES,
+        join=list(CUSTOMER=X$CUSTOMER,PRODUCT=X$PRODUCT,GEOGRAPHY=X$GEOGRAPHY,TIME=X$TIME,CURRENCY=X$CURRENCY),
+        col.subset=list(c("cust_active"),
+                        c("prod_group_name","prod_family_name"),
+                        c("region_name"),
+                        c("month_name"),
+                        NULL))[0:6]
+print(DT)
+```
+
+### CJI
+
+Also known as *Nth setkey*.  
+Creates custom indices for a data.table object. May require lot of memory.  
+
+```{r CJI}
+# not yet ready
+# CJI()
+```
+
+## License
+
+GPL-3.  
+Donations are welcome and will be partially forwarded to dependencies of dwtools.
+`19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN`.
