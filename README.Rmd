@@ -22,17 +22,21 @@ devtools::install_github("jangorecki/dwtools")
 
 ## Core functions
 
-```{r init}
+```{r init, results='hide'}
 library(dwtools)
 ```
 
 ### dw.populate
 
-Not core but it will populate data for the next examples
+Not core function but it will populate data for the next examples.  
+`?dw.populate`
 
 ```{r dw.populate}
-SALES = dw.populate(scenario="fact")
+X = dw.populate(scenario="star schema")
+SALES = X$SALES
+GEOGRAPHY = X$GEOGRAPHY
 head(SALES)
+head(GEOGRAPHY)
 ```
 
 ### db
@@ -41,32 +45,38 @@ Function provides simple database interface. It handles DBI drivers, was tested 
 In ETL terms where `data.table` serves as `transformation` layer, the dwtools `db` function serves `extraction` and `loading` layers.  
 `?db`
 
-```{r db}
-# setup db connection
+```{r db, results='hide'}
+# setup db connections
 library(RSQLite) # install.packages("RSQLite")
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
-# write to db
+# write to db (default connection)
 db(SALES,"sales_table")
 # read from from db
-db("sales_table")[0:6]
+db("sales_table")
 # query from db # not supported for csv driver
-db("SELECT * FROM sales_table")[0:6]
+db("SELECT * FROM sales_table")
 # send to db # not supported for csv driver
 db("DROP TABLE sales_table")
 
-# populate dimension and save to db
-GEOGRAPHY = dw.populate(scenario="star schema")$GEOGRAPHY
-db(GEOGRAPHY,"geography")
-rm(GEOGRAPHY)
+# write geography data.table into multiple connections
+db(GEOGRAPHY,"geography",c("sqlite1","csv1"))
 # lookup from db and setkey
-db("geography",key="state_code")[0:6]
-# all the above can be chained, including keys
-setkeyv(SALES,"state_code")[,db("geography",key="state_code")[.SD]][0:6] # [...][...]
+db("geography",key="state_code")
+# use data.table chaining
+SALES[,.(amount=sum(amount),value=sum(value)),keyby=list(state_code,date_code) # aggr to state_code, date_code
+      ][,db("geography",key="state_code")[.SD] # lookup from sqlite1
+        ][,.(amount=sum(amount),value=sum(value)),keyby=list(division_name,date_code) # aggr to division_code, date_code
+          ]
+SALES[,.SD,keyby=list(state_code) # setkey
+      ][db("geography","csv1",key="state_code" # join to geography from csv file
+           )[division_name=="East South Central" # filter geography to one division_name
+             ], nomatch=0 # inner join
+        ]
 ```
 
-`db` accepts vector of sql statements / table names to allow batch processing.
+`db` function accepts vector of sql statements / table names to allow batch processing.  
 In case of tables migration see `?dbCopy`.
 
 ### joinbyv
@@ -75,18 +85,21 @@ Denormalization of star schema and snowflake schema to flat fact table.
 `?joinbyv`
 
 ```{r joinbyv}
-# populate star schema
-X = dw.populate()
-lapply(X, head)
 # denormalize 
-DT = joinbyv(master=X$SALES,
-        join=list(CUSTOMER=X$CUSTOMER,PRODUCT=X$PRODUCT,GEOGRAPHY=X$GEOGRAPHY,TIME=X$TIME,CURRENCY=X$CURRENCY),
-        col.subset=list(c("cust_active"),
-                        c("prod_group_name","prod_family_name"),
-                        c("region_name"),
-                        c("month_name"),
-                        NULL))[0:6]
-print(DT)
+DT = joinbyv(
+  master = X$SALES,
+  join = list(customer=X$CUSTOMER,
+              product=X$PRODUCT,
+              geography=X$GEOGRAPHY,
+              time=X$TIME,
+              currency=X$CURRENCY),
+  col.subset = list(c("cust_active"),
+                    c("prod_group_name","prod_family_name"),
+                    c("region_name"),
+                    c("month_name"),
+                    NULL)
+  )
+print(names(DT))
 ```
 
 ### CJI
@@ -94,7 +107,7 @@ print(DT)
 Also known as *Nth setkey*.  
 Creates custom indices for a data.table object. May require lot of memory.  
 
-```{r CJI}
+```{r CJI, results='hide'}
 # not yet ready
 # CJI()
 ```
@@ -102,5 +115,15 @@ Creates custom indices for a data.table object. May require lot of memory.
 ## License
 
 GPL-3.  
-Donations are welcome and will be partially forwarded to dependencies of dwtools.
+Donations are welcome and will be partially forwarded to dependencies of dwtools.  
 `19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN`.
+
+```{r cleanup, results='hide'}
+dbDisconnect(conn=sqlite1$conn)
+file.remove(c("sqlite1.db","geography.csv"))
+```
+
+## Contact
+
+`J.Gorecki@wit.edu.pl`
+

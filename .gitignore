@@ -1,4 +1,6 @@
 .*
 !.gitignore
 vignettes/*.html
+*.db
+*.csv
 *~
