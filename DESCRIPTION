@@ -14,7 +14,10 @@ Suggests:
     DBI,
     RPostgreSQL,
     RSQLite,
-    RODBC
+    RMySQL,
+    ROracle,
+    RODBC,
+    RCurl
 Description: Data Warehouse and data integration helpers. Database connector
     handle direct database drivers (DBI), odbc connection (RODBC), csv
     connection. Easy multiple simultaneous databases connections managing.
