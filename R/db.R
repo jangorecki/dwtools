@@ -112,7 +112,7 @@ db_dict <- function(){
 #' @keywords internal
 auto.table.name <- function(x, ncol=getOption("dwtools.db.auto.table.name.ncol"), nchar=getOption("dwtools.db.auto.table.name.nchar")){
   # TO DO: better regex
-  col.names <- gsub(",","_",gsub(" ","_",tolower(substring(na.omit(x[1:ncol]), 1, nchar))))
+  col.names <- gsub(",","_",gsub(" ","_",toupper(substring(na.omit(x[1:ncol]), 1, nchar))))
   now <- as.POSIXlt(Sys.time())
   suffix <- paste0(as.character(now,"%Y%m%d%H%M"),as.character(trunc(now$sec*1e3)))
   if(nchar(suffix)<17) paste0(suffix,paste(rep("0",17-nchar(suffix)),collapse=""))
