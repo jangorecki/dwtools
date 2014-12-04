@@ -84,20 +84,17 @@ db("DROP TABLE sales_table")
 # write geography data.table into multiple connections
 db(GEOGRAPHY,"geography",c("sqlite1","csv1"))
 # lookup from db and setkey
-db("geography",key="state_code")
-#> Error in setkeyv(x, key): some columns are not in the data.table: state_code
+db("geography",key="geog_code")
 # use data.table chaining
-SALES[,.(amount=sum(amount),value=sum(value)),keyby=list(state_code,date_code) # aggr to state_code, date_code
-      ][,db("geography",key="state_code")[.SD] # lookup from sqlite1
-        ][,.(amount=sum(amount),value=sum(value)),keyby=list(division_name,date_code) # aggr to division_code, date_code
+SALES[,.(amount=sum(amount),value=sum(value)),keyby=list(geog_code,time_code) # aggr to geog_code, time_code
+      ][,db("geography",key="geog_code")[.SD] # lookup from sqlite1
+        ][,.(amount=sum(amount),value=sum(value)),keyby=list(geog_division_name,time_code) # aggr to division_code, time_code
           ]
-#> Error in eval(expr, envir, enclos): object 'state_code' not found
-SALES[,.SD,keyby=list(state_code) # setkey
-      ][db("geography","csv1",key="state_code" # join to geography from csv file
-           )[division_name=="East South Central" # filter geography to one division_name
+SALES[,.SD,keyby=list(geog_code) # setkey
+      ][db("geography","csv1",key="geog_code" # join to geography from csv file
+           )[geog_division_name=="East South Central" # filter geography to one division_name
              ], nomatch=0 # inner join
         ]
-#> Error in eval(expr, envir, enclos): object 'state_code' not found
 ```
 `db` function accepts vector of sql statements / table names to allow batch processing.  
 In case of tables migration see `?dbCopy`.
@@ -122,18 +119,16 @@ DT = joinbyv(
               currency = X$CURRENCY),
   col.subset = list(c("cust_active"),
                     c("prod_group_name","prod_family_name"),
-                    c("region_name"),
-                    c("month_name"),
+                    c("geog_region_name"),
+                    c("time_month_name"),
                     NULL)
   )
-#> Error: Column names provided in 'col.subset' does not exists in corresponding 'join' object. Read: ?joinbyv
 print(names(DT))
-#>  [1] "curr_code"         "currency_type"     "prod_code"        
-#>  [4] "prod_name"         "prod_group_code"   "prod_group_name"  
-#>  [7] "prod_family_code"  "prod_family_name"  "time_code"        
-#> [10] "time_month_code"   "time_month_name"   "time_quarter_code"
-#> [13] "time_year_code"    "cust_code"         "geog_code"        
-#> [16] "amount"            "value"
+#>  [1] "curr_code"        "currency_type"    "time_month_name" 
+#>  [4] "geog_region_name" "prod_group_name"  "prod_family_name"
+#>  [7] "cust_active"      "cust_code"        "prod_code"       
+#> [10] "geog_code"        "time_code"        "amount"          
+#> [13] "value"
 ```
 
 ### CJI

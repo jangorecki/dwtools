@@ -55,15 +55,15 @@ db("DROP TABLE sales_table")
 # write geography data.table into multiple connections
 db(GEOGRAPHY,"geography",c("sqlite1","csv1"))
 # lookup from db and setkey
-db("geography",key="state_code")
+db("geography",key="geog_code")
 # use data.table chaining
-SALES[,.(amount=sum(amount),value=sum(value)),keyby=list(state_code,date_code) # aggr to state_code, date_code
-      ][,db("geography",key="state_code")[.SD] # lookup from sqlite1
-        ][,.(amount=sum(amount),value=sum(value)),keyby=list(division_name,date_code) # aggr to division_code, date_code
+SALES[,.(amount=sum(amount),value=sum(value)),keyby=list(geog_code,time_code) # aggr to geog_code, time_code
+      ][,db("geography",key="geog_code")[.SD] # lookup from sqlite1
+        ][,.(amount=sum(amount),value=sum(value)),keyby=list(geog_division_name,time_code) # aggr to division_code, time_code
           ]
-SALES[,.SD,keyby=list(state_code) # setkey
-      ][db("geography","csv1",key="state_code" # join to geography from csv file
-           )[division_name=="East South Central" # filter geography to one division_name
+SALES[,.SD,keyby=list(geog_code) # setkey
+      ][db("geography","csv1",key="geog_code" # join to geography from csv file
+           )[geog_division_name=="East South Central" # filter geography to one division_name
              ], nomatch=0 # inner join
         ]
 ```
@@ -86,8 +86,8 @@ DT = joinbyv(
               currency = X$CURRENCY),
   col.subset = list(c("cust_active"),
                     c("prod_group_name","prod_family_name"),
-                    c("region_name"),
-                    c("month_name"),
+                    c("geog_region_name"),
+                    c("time_month_name"),
                     NULL)
   )
 print(names(DT))
