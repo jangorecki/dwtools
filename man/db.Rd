@@ -224,7 +224,7 @@ db("sales",key="state_code" # read fact table from db
 # dbCopy multiple tables from source to target # ?dbCopy
 dbCopy(
   c("sales","geography","time"),"sqlite1", # source
-  c("sales","geography","time"),"csv1"     # target
+  c("sales","geography","time"),"sqlite2"  # target
 )
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'","sqlite2")) # sqlite2 check
 
@@ -235,7 +235,7 @@ sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) \%in\%
 sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) \%in\% db.conns.names],
        function(x) file.remove(x[["dbname"]])) # remove SQLite db files
 options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
-sapply(paste(c("my_tab1","sales","geography","time"),"csv",sep="."), function(x) file.remove(x)) # remove csv tables
+sapply(paste(c("my_tab1"),"csv",sep="."), function(x) file.remove(x)) # remove csv tables
 }
 \seealso{
 \link{dbCopy}
