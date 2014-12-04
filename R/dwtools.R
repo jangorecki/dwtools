@@ -8,7 +8,7 @@
 #' \item \link{timing} measure timing and rows in-out.
 #' \item \link{CJI} custom indices for in-memory processing.
 #' }
-#' @note All dot prefixed parameters are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
+#' @note All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
 #' @docType package
 #' @import data.table digest
 #' @name dwtools
@@ -43,20 +43,20 @@ dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setke
                prod_family_code = 1:((N/K)/10), 
                prod_family_name = paste0("prod family ",1:((N/K)/10),sample(letters,(N/K)/10,TRUE)))
   GEOGRAPHY <- # grp size fixed to 50
-    data.table(state_code = state.abb,
-               state_name = state.name,
-               division_code = as.integer(state.division),
-               division_name = as.character(state.division),
-               region_code = as.integer(state.region),
-               region_name = as.character(state.region))
+    data.table(geog_code = state.abb,
+               geog_name = state.name,
+               geog_division_code = as.integer(state.division),
+               geog_division_name = as.character(state.division),
+               geog_region_code = as.integer(state.region),
+               geog_region_name = as.character(state.region))
   TIME <- # grp size fixed to 1826
-    data.table(date_code = seq(as.Date("2010-01-01"),
+    data.table(time_code = seq(as.Date("2010-01-01"),
                                as.Date("2014-12-31"),
                                by = "1 day"))
-  TIME[,`:=`(month_code = month(date_code), 
-             month_name = months(date_code),
-             quarter_code = as.POSIXlt(date_code)$mon %/% 3L + 1L,
-             year_code = year(date_code))]
+  TIME[,`:=`(time_month_code = month(time_code), 
+             time_month_name = months(time_code),
+             time_quarter_code = as.POSIXlt(time_code)$mon %/% 3L + 1L,
+             time_year_code = year(time_code))]
   # currency taken from: https://github.com/jangorecki/Rbitcoin/blob/master/R/dictionaries.R#L139
   ct.dict = list(
     crypto = c('BTC','LTC','NMC','FTC','NVC','PPC','TRC','XPM','XDG','XRP','XVN'),
@@ -70,8 +70,8 @@ dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setke
   SALES <- data.table(
     cust_code = sample(CUSTOMER$cust_code, N, TRUE),
     prod_code = sample(PRODUCT$prod_code, N, TRUE),
-    state_code = sample(GEOGRAPHY$state_code, N, TRUE),
-    date_code = sample(TIME$date_code, N, TRUE),
+    geog_code = sample(GEOGRAPHY$geog_code, N, TRUE),
+    time_code = sample(TIME$time_code, N, TRUE),
     curr_code = sample(CURRENCY$curr_code, N, TRUE),
     amount =  round(runif(N,max=1e3),4),
     value =  round(runif(N,max=1e6),8)
@@ -79,12 +79,12 @@ dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setke
   if(scenario %in% c("star schema") && setkey){
     invisible(mapply(FUN = function(join, by) setkeyv(join,by),
                      join = list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), 
-                     by = list("cust_code","prod_code","state_code","date_code","curr_code"), SIMPLIFY=FALSE))
+                     by = list("cust_code","prod_code","geog_code","time_code","curr_code"), SIMPLIFY=FALSE))
   }
   DT = switch(scenario,
               "fact" = SALES,
               "star schema" = list(SALES=SALES,CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY),
-              "denormalized star schema" = joinbyv(master=SALES, join=list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), by=list("cust_code","prod_code","state_code","date_code","curr_code")))
+              "denormalized star schema" = joinbyv(master=SALES, join=list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), by=list("cust_code","prod_code","geog_code","time_code","curr_code")))
   if(verbose > 0) cat(as.character(Sys.time()),": dw.populate: processed scenario '",scenario,"' volume N: ",N,", groups K: ",K,"\n",sep="")
   return(DT)
 }

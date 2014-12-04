@@ -1,9 +1,30 @@
-joinbyv <- function(master, join, 
-                    by = lapply(join, key), 
-                    col.subset = lapply(join, names), 
-                    row.subset = as.list(rep(TRUE,length(join))),
-                    nomatch = lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch")),
-                    allow.cartesian = as.list(rep(getOption("datatable.allow.cartesian"),length(join)))){
+#' @title Batch join multiple tables
+#' @description Perform batch join of multiple tables to one \emph{master} table.
+#' @param master data.table, optionally also a single data.table nested in the list.
+#' @param join list of data.tables which to join to \emph{master} data.table.
+#' @param by list of character vectors. Default: \code{lapply(join, key)}. Required when not all of \emph{join} data.tables has key.
+#' @param col.subset list of character vectors. Default: \code{lapply(join, names)}.
+#' @param row.subset list of \link{expression}s to be passed to corresponding \emph{join} data.table \code{i} argument. Default: \code{as.list(rep(TRUE,length(join)))}. To subset result \emph{master} data.table, use \emph{row.subset} together with corresponding \emph{nomatch} argument equal to \code{0} (inner join). By default when providing \emph{row.subset} list element the corresponding \emph{nomatch} argument will be changed to \code{0} to perform inner join, otherwise it will be \code{getOption("datatable.nomatch")}. If you really want to do outer join to already filtered \emph{join} data.table you need to override corresponding \emph{nomatch} argument for \code{NA}. Cross table expressions and not supported inside \emph{joinbyv}.
+#' @param nomatch list of integer scalars \code{NA} or \code{0} elements corresponding \code{join} data.tables. Default: \code{lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))}. Indicates outer join for \code{NA} and inner join for \code{0}. When \emph{data.table} extends allowed argument in the \code{getOption("datatable.nomatch")} then it should accept not only integer scalar but any value supported by \emph{data.table} as \emph{nomatch} argument.
+#' @param allow.cartesian list of logical scalar elements corresponding to \code{join} data.tables to define which of the joins are allowed to do cartesian product. Default: \code{as.list(rep(getOption("datatable.allow.cartesian"),length(join)))}.
+#' @details 
+#' Any \code{NULL} inside the lists provided to \emph{by, col.subset, row.subset, nomatch, allow.cartesian} will be replaced by the default value for particular \code{NULL} element. Therefore it is possible to pass partially filled lists, length of each must match to length of \emph{join}, example \code{col.subset=list(NULL,c("join2_col1","join2_col2"),NULL,c("join4_col1"))}.
+#' Function do not allow cross tables \emph{row.subset} filtering expressions. User should apply such filter after \code{joinbyv}, example: \code{joinbyv(master, join)[join1_colA > join2_colA * 2]}.
+#' Arguments \emph{nomatch, allow.cartesian} by default will be setup according to \emph{data.table} options. An exception case described in \emph{row.subset} argument will by default override the \emph{nomatch} argument to value \code{0} to perform inner join.
+#' Possibly the performance might be improved after implementing data.table FR #691 and #692.
+#' @return
+#' \emph{data.table}, denormalized master table joined to defined \emph{join} data.tables. Column order according to \code{col.subset}, no key.
+#' @author Jan Gorecki
+#' @export
+#' @example tests/joinbyv_examples.R
+joinbyv <- function(master, join, by = NULL, col.subset = NULL, row.subset = NULL, nomatch = NULL, allow.cartesian = NULL){
+  # 20141204 - switch defaults to NULL
+  if(is.null(by)) by = lapply(join, key)
+  if(is.null(col.subset)) col.subset = lapply(join, names)
+  if(is.null(row.subset)) row.subset = as.list(rep(TRUE,length(join)))
+  if(is.null(nomatch)) nomatch = lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))
+  if(is.null(allow.cartesian)) allow.cartesian = as.list(rep(getOption("datatable.allow.cartesian"),length(join)))
+  
   # input check
   stopifnot(all(!missing(master),!missing(join))) # non missing mandatory args
   if(!is.data.table(master)) master <- master[[1]] # conver master list(DT) to DT

@@ -18,6 +18,6 @@ The core functions includes:
 }
 }
 \note{
-All dot prefixed parameters are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
+All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
 }
 
