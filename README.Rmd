@@ -1,7 +1,7 @@
 # dwtools
 ```{r init.tech, echo = FALSE}
 knitr::opts_chunk$set(collapse=TRUE,comment="#>",fig.path="README-",cache=FALSE)
-# knit("dwtools/README.Rmd","dwtools/README.md")
+# knitr::knit("dwtools/README.Rmd","dwtools/README.md")
 ```
 **Current version: pre 1.0.0**  
 
