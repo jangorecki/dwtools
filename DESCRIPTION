@@ -12,12 +12,11 @@ Imports:
 Suggests:
     jsonlite,
     DBI,
-    RPostgreSQL,
     RSQLite,
-    RMySQL,
-    ROracle,
     RODBC,
-    RCurl
+    RCurl,
+    zoo,
+    xts
 Description: Data Warehouse and data integration helpers. Database connector
     handle direct database drivers (DBI), odbc connection (RODBC), csv
     connection. Easy multiple simultaneous databases connections managing.
