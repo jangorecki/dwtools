@@ -129,7 +129,7 @@ sapply(l, function(x) attr(x,"tablename",TRUE))
 db("my_tab1")
 db("my_tab2","sqlite2")
 db("my_tab1","csv1") # READ from my_tab1.csv
-r1 = db("my_tab1","sqlite1",key=c("prod_code","cust_code","state_code","date_code")) # set key on result, useful on chaining, see 'Chaining data.table' examples below
+r1 = db("my_tab1","sqlite1",key=c("prod_code","cust_code","geog_code","time_code")) # set key on result, useful on chaining, see 'Chaining data.table' examples below
 str(r1) # keys
 db(DT, "my_tab2") # CREATE TABLE just for below line example
 l = db("my_tab2", c("sqlite1","sqlite2")) # read my_tab2 table from two connections, return list, no `key` supported! #PR welcome
@@ -140,14 +140,14 @@ str(l)
 ### get, aka: SELECT ... FROM ... JOIN ...
 
 db("SELECT * FROM my_tab1")
-r = db("SELECT * FROM my_tab2","sqlite2",key=c("prod_code","cust_code","state_code","date_code"))
+r = db("SELECT * FROM my_tab2","sqlite2",key=c("prod_code","cust_code","geog_code","time_code"))
 str(r)
 l = db(c("SELECT * FROM my_tab1","SELECT * FROM my_tab2"),c("sqlite1","sqlite2"))
 str(l)
 
 ### send, aka: UPDATE, INDEX, DROP, etc.
 
-db(c("CREATE INDEX idx_my_tab1a ON my_tab1 (prod_code, state_code)","CREATE INDEX idx_my_tab1b ON my_tab1 (cust_code, date_code)")) # create two indices
+db(c("CREATE INDEX idx_my_tab1a ON my_tab1 (prod_code, geog_code)","CREATE INDEX idx_my_tab1b ON my_tab1 (cust_code, time_code)")) # create two indices
 db(c("DROP INDEX idx_my_tab1a","DROP INDEX idx_my_tab1b")) # drop two indices
 db("DROP TABLE my_tab2") # drop the table which we created in above example #CREATE TABLE
 db(c("DROP TABLE my_tab1","DROP TABLE my_tab2"),c("sqlite1","sqlite2")) # multiple statements into multiple connections
@@ -190,7 +190,7 @@ db(dw.star$GEOGRAPHY,"geography") # save geography to db
 db(dw.star$SALES,"sales") # save sales FACT to db
 
 # data.table join in R directly on external SQL database
-db("geography",key="state_code")[db("sales",key="state_code")] # geography[sales]
+db("geography",key="geog_code")[db("sales",key="geog_code")] # geography[sales]
 
 ## chaining including read and write directly on SQL database
 # 0. predefine aggregate function for later use
@@ -206,16 +206,16 @@ db("geography",key="state_code")[db("sales",key="state_code")] # geography[sales
 # 9. aggregate to higher time entity
 # 10. save current state of data to db
 jj_aggr = quote(list(amount=sum(amount), value=sum(value)))
-db("sales",key="state_code" # read fact table from db
-   )[,eval(jj_aggr),keyby=c("state_code","date_code") # aggr by state_code and date_code
+db("sales",key="geog_code" # read fact table from db
+   )[,eval(jj_aggr),keyby=c("geog_code","time_code") # aggr by geog_code and time_code
      ][,db(.SD) # write to db, auto.table.name
-       ][,db("geography",key="state_code" # read lookup geography dim from db
+       ][,db("geography",key="geog_code" # read lookup geography dim from db
              )[.SD # left join geography
-               ][,eval(jj_aggr), keyby=c("date_code","region_name")] # aggr
+               ][,eval(jj_aggr), keyby=c("time_code","geog_region_name")] # aggr
          ][,db(.SD) # write to db, auto.table.name
-           ][,db("time",key="date_code" # read lookup time dim from db
+           ][,db("time",key="time_code" # read lookup time dim from db
                  )[.SD # left join time
-                   ][, eval(jj_aggr), keyby=c("region_name","month_code","month_name")] # aggr
+                   ][, eval(jj_aggr), keyby=c("geog_region_name","time_month_code","time_month_name")] # aggr
              ][,db(.SD) # write to db, auto.table.name
                ]
 
