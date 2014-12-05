@@ -3,8 +3,7 @@
 \alias{joinbyv}
 \title{Batch join multiple tables}
 \usage{
-joinbyv(master, join, by = NULL, col.subset = NULL, row.subset = NULL,
-  nomatch = NULL, allow.cartesian = NULL)
+joinbyv(master, join, by, col.subset, row.subset, nomatch, allow.cartesian)
 }
 \arguments{
 \item{master}{data.table, optionally also a single data.table nested in the list.}
@@ -46,12 +45,12 @@ DT = joinbyv(master = X$SALES,
              by = list("time_code","prod_code","curr_code"))
 str(DT)
 
-# by currency type in tiime
+# by currency type in time
 DT[,list(value=sum(value,na.rm=TRUE)),keyby=list(time_code, currency_type)
    ][,list({
-     plot(x = time_code, y = value, type="n")
-     lines(x = time_code[currency_type=="crypto"], y = value[currency_type=="crypto"], col = "green")
-     lines(x = time_code[currency_type=="fiat"], y = value[currency_type=="fiat"], col = "blue")
+     plot(x=time_code, y=value, type="n")
+     lines(x=time_code[currency_type=="crypto"], y=value[currency_type=="crypto"], col="green")
+     lines(x=time_code[currency_type=="fiat"], y=value[currency_type=="fiat"], col="blue")
    })] # random data
 }
 \author{

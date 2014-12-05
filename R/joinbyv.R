@@ -17,13 +17,13 @@
 #' @author Jan Gorecki
 #' @export
 #' @example tests/joinbyv_examples.R
-joinbyv <- function(master, join, by = NULL, col.subset = NULL, row.subset = NULL, nomatch = NULL, allow.cartesian = NULL){
-  # 20141204 - switch defaults to NULL
-  if(is.null(by)) by = lapply(join, key)
-  if(is.null(col.subset)) col.subset = lapply(join, names)
-  if(is.null(row.subset)) row.subset = as.list(rep(TRUE,length(join)))
-  if(is.null(nomatch)) nomatch = lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))
-  if(is.null(allow.cartesian)) allow.cartesian = as.list(rep(getOption("datatable.allow.cartesian"),length(join)))
+joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.cartesian){
+  # defaults
+  if(missing(by)) by = lapply(join, key)
+  if(missing(col.subset)) col.subset = lapply(join, names)
+  if(missing(row.subset)) row.subset = as.list(rep(TRUE,length(join)))
+  if(missing(nomatch)) nomatch = lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))
+  if(missing(allow.cartesian)) allow.cartesian = as.list(rep(getOption("datatable.allow.cartesian"),length(join)))
   
   # input check
   stopifnot(all(!missing(master),!missing(join))) # non missing mandatory args
