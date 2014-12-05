@@ -69,6 +69,7 @@ In ETL terms where `data.table` serves as **Transformation** layer, the dwtools 
 ```r
 # setup db connections
 library(RSQLite) # install.packages("RSQLite")
+#> Loading required package: DBI
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
@@ -100,6 +101,7 @@ SALES[,.SD,keyby=list(geog_code) # setkey
 In case of tables migration see `?dbCopy`.
 
 ### joinbyv
+Batch join multiple tables into one master table.  
 Denormalization of star schema and snowflake schema to flat fact table.  
 `?joinbyv`
 

@@ -18,6 +18,13 @@
 #' @export
 #' @example tests/joinbyv_examples.R
 joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.cartesian){
+  # basic input check: master and join
+  stopifnot(all(!missing(master),!missing(join))) # non missing mandatory args
+  if(!is.data.table(master)) master <- master[[1]] # conver master list(DT) to DT
+  stopifnot(all(
+    is.data.table(master), !is.data.table(join), is.list(join) # master is DT, join is list
+  ))
+  
   # defaults
   if(missing(by)) by = lapply(join, key)
   if(missing(col.subset)) col.subset = lapply(join, names)
@@ -25,13 +32,11 @@ joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.car
   if(missing(nomatch)) nomatch = lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))
   if(missing(allow.cartesian)) allow.cartesian = as.list(rep(getOption("datatable.allow.cartesian"),length(join)))
   
-  # input check
-  stopifnot(all(!missing(master),!missing(join))) # non missing mandatory args
-  if(!is.data.table(master)) master <- master[[1]] # conver master list(DT) to DT
+  # basic input check: all others
   stopifnot(all(
-    is.data.table(master), !is.data.table(join), is.list(join), # master is DT, join is list
     is.list(by), is.list(col.subset), is.list(row.subset), is.list(nomatch), is.list(allow.cartesian) # all other args are lists
   ))
+  
   # at least key(join) or by provided - raise error on missing
   valid_key <- mapply(join = join, by = by, 
                       FUN = function(join, by) if(is.null(by) & is.null(key(join))) FALSE else TRUE,

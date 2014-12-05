@@ -71,6 +71,7 @@ SALES[,.SD,keyby=list(geog_code) # setkey
 In case of tables migration see `?dbCopy`.
 
 ### joinbyv
+Batch join multiple tables into one master table.  
 Denormalization of star schema and snowflake schema to flat fact table.  
 `?joinbyv`
 ```{r joinbyv}
