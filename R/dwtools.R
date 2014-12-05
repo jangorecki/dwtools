@@ -16,6 +16,13 @@ NULL
 
 # technical ---------------------------------------------------------------
 
+#' @title POSIXct
+#' @description 0 length POSIXct wrapper
+#' @keywords internal
+POSIXct <- function(length = 0, tz = "UTC"){
+  structure(numeric(length), class = c("POSIXct","POSIXt"), tzone = tz)
+}
+
 #' @title as.POSIXct
 #' @description Setting default for UTC and 1970.
 #' @keywords internal
