@@ -132,10 +132,10 @@ as.POSIXct <- function(x,tz="UTC",origin="1970-01-01"){
   base::as.POSIXct(x,tz=tz,origin=origin)
 }
 
-#' @title int.is.POSIXct
-#' @description Check if is integer and can be POSIX between 1970 and 2100.
+#' @title is.int.POSIXct
+#' @description Check if is integer and could be POSIX between 1970 and 2100.
 #' @keywords internal
-int.is.POSIXct <- function(x, date_from = as.POSIXct("1970-01-01"), date_to = as.POSIXct("2100-01-01")){
+is.int.POSIXct <- function(x, date_from = as.POSIXct("1970-01-01"), date_to = as.POSIXct("2100-01-01")){
   is.integer(x) && all(as.POSIXct(x) %between% c(date_from,date_to))
 }
 
