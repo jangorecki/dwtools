@@ -238,6 +238,6 @@ options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
 sapply(paste(c("my_tab1"),"csv",sep="."), function(x) file.remove(x)) # remove csv tables
 }
 \seealso{
-\link{dbCopy}
+\link{dbCopy}, \link{timing}
 }
 

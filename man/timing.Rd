@@ -65,4 +65,7 @@ file.remove(sqlite1$dbname)
 options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
 options("dwtools.timing.conn.name"=NULL)
 }
+\seealso{
+\link{db}
+}
 

@@ -9,6 +9,7 @@
 #' @param .timing.name character
 #' @param .timing.conn.name character
 #' @details Use option \code{options("dwtools.timing"=TRUE)} to turn on timing measurment in functions which supports timing measurement. To log timing to db connection, setup \code{options("dwtools.db.conns"}, provide connection name to \code{options("dwtools.timing.conn.name"="sqlite1")} and target table \code{options("dwtools.timing.name"="dwtools_timing")} (default) otherwise timing will be returned as \code{"timing"} attribute to the expression result.
+#' @seealso \link{db}
 #' @export
 #' @example tests/timing_examples.R
 timing <- function(expr, nrow_in = NA_integer_,

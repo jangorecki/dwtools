@@ -215,7 +215,7 @@ list.sub <- function(x, i, fill=NULL){
 #' There are preprocessing and postprocessing functions available per defined db driver. Those functions can be used for seemless integration in case if write/read to db lose classes of the data.\cr
 #' This gives R ability to act as data hub and gain value as ETL tool.\cr
 #' You can add new interfaces by extending \link{db_dict}. Pull Requests are welcome.
-#' @seealso \link{dbCopy}
+#' @seealso \link{dbCopy}, \link{timing}
 #' @export
 #' @example tests/db_examples.R
 db <- function(x, ..., key,
@@ -386,7 +386,10 @@ db <- function(x, ..., key,
 #' @param target.table.name character vector of tables names to copy to target connection
 #' @param target.conn.name character scalar
 #' @param verbose integer status messages
+#' @seealso \link{db}
 #' @export
+#' @examples
+#' # see the last example in ?db
 dbCopy <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, verbose=getOption("dwtools.verbose")){
   stopifnot(length(source.conn.name)==1 && length(target.conn.name)==1)
   stopifnot(length(source.table.name)==length(target.table.name))

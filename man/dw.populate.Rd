@@ -39,4 +39,7 @@ print(Z)
 SALES = dw.populate(scenario="fact")
 print(SALES)
 }
+\seealso{
+\link{joinbyv}
+}
 

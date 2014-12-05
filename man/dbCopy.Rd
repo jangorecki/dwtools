@@ -20,4 +20,10 @@ dbCopy(source.table.name, source.conn.name, target.table.name, target.conn.name,
 \description{
 Copy tables between databases
 }
+\examples{
+# see the last example in ?db
+}
+\seealso{
+\link{db}
+}
 
