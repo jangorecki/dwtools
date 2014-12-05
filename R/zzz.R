@@ -1,34 +1,24 @@
 .onLoad <- function(libname, pkgname){
   
-  # dependency
-  
-  # due to big int timestamp - not yet used
-  #options("scipen"=100)
-  #trunc(as.numeric(Sys.time())*1e3)
-  
   # dwtools
   
-  # to be used in the batch processes if you want to group/join datasets from the corresponding batches. It is integer POSIX of R session start. To get new session value R session needs to be restarted.
-  #options("dwtools.session" = as.integer(Sys.time() - proc.time()[['elapsed']])) # R session time
-  options("dwtools.session" = as.integer(Sys.time())) # dwtools session time
-  # usage
-  #DT[, dwtools_session := getOption("dwtools.session")]
-  
+  options("dwtools.session"=as.integer(Sys.time())) # dwtools session time
   options("dwtools.verbose"=0)
   
-  options("dwtools.timing"=FALSE) # TODO test, dev?
-  #options("dwtools.timing.conn.name"="sqlite1")
-  #options("dwtools.timing.name"="mylogtable")
+  # timing
+  
+  options("dwtools.timing"=FALSE)
+  options("dwtools.timing.conn.name"=NULL)
+  options("dwtools.timing.name"="dwtools_timing")
   
   # db
   
-  options("dwtools.db.preprocess"=FALSE) # db
-  options("dwtools.db.postprocess"=FALSE) # db
+  options("dwtools.db.preprocess"=FALSE)
+  options("dwtools.db.postprocess"=FALSE)
+  options("dwtools.db.auto.table.name.ncol"=4)
+  options("dwtools.db.auto.table.name.nchar"=4)
+  options("dwtools.db.dict"=db_dict())
   
-  options("dwtools.db.auto.table.name.ncol"=4) # auto.table.name
-  options("dwtools.db.auto.table.name.nchar"=4) # auto.table.name
-  
-  options("dwtools.db.dict"=db_dict()) # db_dict
 }
 
 .onAttach <- function(libname, pkgname){

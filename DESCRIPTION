@@ -15,7 +15,8 @@ Suggests:
     RSQLite,
     RODBC,
     RCurl,
-    xts
+    xts,
+    Rbitcoin
 Description: Data Warehouse and data integration helpers. Database connector
     handle direct database drivers (DBI), odbc connection (RODBC), csv
     connection. Easy multiple simultaneous databases connections managing.

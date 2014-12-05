@@ -2,9 +2,9 @@
 
 **Current version: pre 1.0.0**  
 
-Data Warehouse tools. Extension for `data.table` package for Data Warehouse related functionalities.  
+Data Warehouse tools. Extension for `data.table` package for Data Warehouse related functionalities and some other helper functions.  
 See below for core functions in the package.  
-Report any bug as issues on github.
+Report any bugs as issues on github.
 
 ## Installation
 
@@ -69,7 +69,6 @@ In ETL terms where `data.table` serves as **Transformation** layer, the dwtools 
 ```r
 # setup db connections
 library(RSQLite) # install.packages("RSQLite")
-#> Loading required package: DBI
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
@@ -141,6 +140,12 @@ Creates custom indices for a data.table object. May require lot of memory.
 # not yet ready
 # CJI()
 ```
+
+## Other functions
+A brief summary of other functions in the package.  
+`?timing` - measure time, nrow in/out, optional save to db
+`?as.xts` - wrapper method for conversion of data.table to xts
+`?vwap` - aggregate tick trades data to OHLC including VWAP
 
 ## License
 GPL-3.  

@@ -5,9 +5,9 @@ knitr::opts_chunk$set(collapse=TRUE,comment="#>",fig.path="README-",cache=FALSE)
 ```
 **Current version: pre 1.0.0**  
 
-Data Warehouse tools. Extension for `data.table` package for Data Warehouse related functionalities.  
+Data Warehouse tools. Extension for `data.table` package for Data Warehouse related functionalities and some other helper functions.  
 See below for core functions in the package.  
-Report any bug as issues on github.
+Report any bugs as issues on github.
 
 ## Installation
 ```{r installation, eval=FALSE}
@@ -101,6 +101,12 @@ Creates custom indices for a data.table object. May require lot of memory.
 # not yet ready
 # CJI()
 ```
+
+## Other functions
+A brief summary of other functions in the package.  
+`?timing` - measure time, nrow in/out, optional save to db
+`?as.xts` - wrapper method for conversion of data.table to xts
+`?vwap` - aggregate tick trades data to OHLC including VWAP
 
 ## License
 GPL-3.  
