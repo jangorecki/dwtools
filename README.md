@@ -143,9 +143,9 @@ Creates custom indices for a data.table object. May require lot of memory.
 
 ## Other functions
 A brief summary of other functions in the package.  
-`?timing` - measure time, nrow in/out, optional save to db
-`?as.xts` - wrapper method for conversion of data.table to xts
-`?vwap` - aggregate tick trades data to OHLC including VWAP
+* `?timing` - measure time, nrow in/out, optional save to db
+* `?as.xts` - wrapper method for conversion of data.table to xts
+* `?vwap` - aggregate tick trades data to OHLC including VWAP
 
 ## License
 GPL-3.  
