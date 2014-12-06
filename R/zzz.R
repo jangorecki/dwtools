@@ -19,6 +19,10 @@
   options("dwtools.db.auto.table.name.nchar"=4)
   options("dwtools.db.dict"=db_dict())
   
+  # vwap
+  
+  options("dwtools.time.dict"=time_dict())
+  
 }
 
 .onAttach <- function(libname, pkgname){
