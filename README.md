@@ -69,6 +69,7 @@ In ETL terms where `data.table` serves as **Transformation** layer, the dwtools 
 ```r
 # setup db connections
 library(RSQLite) # install.packages("RSQLite")
+#> Loading required package: DBI
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
@@ -132,20 +133,30 @@ print(names(DT))
 #> [13] "value"
 ```
 
-### CJI
+### idxv
 Also known as *Nth setkey*.  
 Creates custom indices for a data.table object. May require lot of memory.  
 
 ```r
-# not yet ready
-# CJI()
+DT = dw.populate(scenario="fact")
+# custom indices
+Idx = list(
+  c("cust_code", "geog_code", "curr_code"),
+  c(2:3)
+)
+IDX = idxv(DT, Idx)
+
+# binary search using first index, equivalent to: DT[cust_code=="id006" & geog_code=="UT" & curr_code=="NOK"]
+DT[CJI(IDX,"id006",TRUE,"UT",TRUE,"NOK")]
+# binary search using second index, equivalent to: DT[prod_code==323 & geog_code=="OR"]
+DT[CJI(IDX,TRUE,323,"OR")]
 ```
 
 ## Other functions
 A brief summary of other functions in the package.  
-* `?timing` - measure time, nrow in/out, optional save to db
-* `?as.xts` - wrapper method for conversion of data.table to xts
-* `?vwap` - aggregate tick trades data to OHLC including VWAP
+* `timing` - measure time, nrow in/out, optional save to db
+* `as.xts` - wrapper method for conversion of data.table to xts
+* `vwap` - aggregate tick trades data to OHLC including VWAP
 
 ## License
 GPL-3.  

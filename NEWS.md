@@ -8,6 +8,6 @@
   * TODO: couchdb
 * joinbyv - batch join tables
 * populate star schema data
-* TODO: CJI - custom precalculated DT keys
+* idxv - custom precalculated DT keys
 * timing function including logging to db
 * as.xts method for data.table

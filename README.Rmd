@@ -94,19 +94,29 @@ DT = joinbyv(
 print(names(DT))
 ```
 
-### CJI
+### idxv
 Also known as *Nth setkey*.  
 Creates custom indices for a data.table object. May require lot of memory.  
-```{r CJI, results='hide'}
-# not yet ready
-# CJI()
+```{r idxv, results='hide'}
+DT = dw.populate(scenario="fact")
+# custom indices
+Idx = list(
+  c("cust_code", "geog_code", "curr_code"),
+  c(2:3)
+)
+IDX = idxv(DT, Idx)
+
+# binary search using first index, equivalent to: DT[cust_code=="id006" & geog_code=="UT" & curr_code=="NOK"]
+DT[CJI(IDX,"id006",TRUE,"UT",TRUE,"NOK")]
+# binary search using second index, equivalent to: DT[prod_code==323 & geog_code=="OR"]
+DT[CJI(IDX,TRUE,323,"OR")]
 ```
 
 ## Other functions
 A brief summary of other functions in the package.  
-* `?timing` - measure time, nrow in/out, optional save to db
-* `?as.xts` - wrapper method for conversion of data.table to xts
-* `?vwap` - aggregate tick trades data to OHLC including VWAP
+* `timing` - measure time, nrow in/out, optional save to db
+* `as.xts` - wrapper method for conversion of data.table to xts
+* `vwap` - aggregate tick trades data to OHLC including VWAP
 
 ## License
 GPL-3.  
