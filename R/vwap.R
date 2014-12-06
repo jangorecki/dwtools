@@ -33,8 +33,8 @@ round.POSIXct <- function(x, units, trunc_ceiling = "trunc", tz = "UTC"){
 #' @param x data.table of tick trades, columns: \emph{date, price, amount, tid, type}.
 #' @param units time units period to aggregate.
 #' @param trunc_ceiling character, default \emph{trunc}, also possible \emph{ceiling}.
-#' @return data.table aggregated to specified time units, \emph{price} column is VWAP.
 #' @details Rows where \code{amount==0} (normally should not happened) should be filtered before passing the tick data to the function.
+#' @return data.table aggregated to specified time units, \emph{price} column is VWAP.
 #' @export
 #' @example tests/vwap_examples.R
 vwap <- function(x, units, trunc_ceiling="trunc"){
