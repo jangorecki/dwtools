@@ -13,7 +13,7 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
 \arguments{
 \item{x}{data.table (to save in db) or character of table names or character of sql commands.}
 
-\item{key}{character vector to be used to set key, cannot be mixed with multiple connections queries, see examples for chaining in DT syntax.}
+\item{key}{character vector to be used to set key or integer columns position, cannot be mixed with multiple connections queries, see examples for chaining in DT syntax.}
 
 \item{.db.preprocess}{logical.}
 

@@ -77,7 +77,7 @@ list.sub <- function(x, i, fill=NULL){
 #' @description Common db interface for DBI, RODBC and other custom defined off-memory storage. So far it was tested with SQLite, postgres and csv.
 #' @param x data.table (to save in db) or character of table names or character of sql commands.
 #' @param \dots if \code{x} is data.table then \dots expects character table names and character connection names else \dots expects only character connection names.
-#' @param key character vector to be used to set key, cannot be mixed with multiple connections queries, see examples for chaining in DT syntax.
+#' @param key character vector to be used to set key or integer columns position, cannot be mixed with multiple connections queries, see examples for chaining in DT syntax.
 #' @param .db.preprocess logical.
 #' @param .db.postprocess logical.
 #' @param .db.conns list of connections uniquely named.
@@ -251,7 +251,8 @@ db <- function(x, ..., key,
     if(length(name)!=N) stop("Invalid table names length, table names length should be equal to 1 (to be recycled) or it should match to connection names length.") # TODO test
     x = db.one.is.timing(conn.name=conn.name, sql=sql[[1]], name=name, action=action, DT=x, .db.conns=.db.conns, .db.dict=.db.dict, .timing=timing, verbose=verbose-1)
     msg <- paste0(msg,"; processed ",action," in ",conn.name)
-    if(is.data.table(x) && !missing(key) && !is.null(key) && is.character(key)){
+    if(is.data.table(x) && !missing(key) && !is.null(key)){
+      if(is.numeric(key)) key <- names(x)[as.integer(key)] # support for column index instead of name
       setkeyv(x,key)
       msg <- paste0(msg,"; key on: ",paste(key,collapse=", "))
     }

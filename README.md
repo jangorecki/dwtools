@@ -15,7 +15,7 @@ devtools::install_github("jangorecki/dwtools")
 ## Core functions
 
 ```r
-library(dwtools)
+suppressPackageStartupMessages(library(dwtools))
 options("dwtools.verbose" = 0) # 1+ for status message
 ```
 
@@ -88,7 +88,7 @@ SALES[,.(amount=sum(amount),value=sum(value)),keyby=list(geog_code,time_code) # 
         ][,.(amount=sum(amount),value=sum(value)),keyby=list(geog_division_name,time_code) # aggr to division_code, time_code
           ]
 SALES[,.SD,keyby=list(geog_code) # setkey
-      ][db("geography","csv1",key="geog_code" # join to geography from csv file
+      ][db("geography","csv1",key=1 # join to geography from csv file, setkey on first column
            )[geog_division_name=="East South Central" # filter geography to one division_name
              ], nomatch=0 # inner join
         ]
