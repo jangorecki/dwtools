@@ -14,7 +14,7 @@ db_dict <- function(){
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE, append = TRUE),
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE, append = TRUE),
       function(conn, name, value) as.logical(sqlSave(channel=conn, dat=value, tablename=name, rownames=FALSE, append = TRUE)),
-      function(conn, name, value) if(is.null(write.csv(x=value, file=name, row.names=FALSE, append = TRUE))) TRUE else FALSE
+      function(conn, name, value) if(is.null(write.table(x=value, file=name, row.names=FALSE, sep=",", dec=".", append=file.exists(name), col.names=!file.exists(name), qmethod="double"))) TRUE else FALSE
     ),
     read = list(
       function(conn, name) dbReadTable(conn=conn, name=name),

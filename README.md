@@ -80,8 +80,6 @@ db("DROP TABLE sales_table")
 
 # write geography data.table into multiple connections
 db(GEOGRAPHY,"geography",c("sqlite1","csv1"))
-#> Warning in write.csv(x = value, file = name, row.names = FALSE, append =
-#> TRUE): attempt to set 'append' ignored
 # lookup from db and setkey
 db("geography",key="geog_code")
 # use data.table chaining
