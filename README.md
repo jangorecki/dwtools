@@ -134,6 +134,9 @@ Creates custom indices for a data.table object. May require lot of memory.
 
 ```r
 DT = X$SALES
+names(DT)
+#> [1] "cust_code" "prod_code" "geog_code" "time_code" "curr_code" "amount"   
+#> [7] "value"
 # create some particular indices
 Idx = list(
   c("cust_code", "prod_code", "geog_code"),

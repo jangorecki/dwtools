@@ -94,6 +94,7 @@ DT binary search on multiple keys, also known as *Nth setkey*.
 Creates custom indices for a data.table object. May require lot of memory.  
 ```{r idxv}
 DT = X$SALES
+names(DT)
 # create some particular indices
 Idx = list(
   c("cust_code", "prod_code", "geog_code"),
