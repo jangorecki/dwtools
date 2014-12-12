@@ -21,7 +21,6 @@ options("dwtools.verbose" = 0) # 1+ for status message
 
 ### dw.populate
 Not core function but it will populate data for the next examples.  
-`?dw.populate`
 
 ```r
 X = dw.populate(scenario="star schema")
@@ -60,9 +59,8 @@ head(GEOGRAPHY)
 ```
 
 ### db
-Function provides simple database interface.  
+Function provides simple database interface. Designed to use in data.table chaining.  
 It handles DBI drivers (tested on Postgres and SQLite), RODBC (any odbc connection, not yet tested) and csv files as tables.  
-NoSQL couchdb support in dev.  
 In ETL terms where `data.table` serves as **Transformation** layer, the dwtools `db` function serves **Extraction** and **Loading** layers.  
 
 ```r
@@ -103,12 +101,9 @@ In case of tables migration see `?dbCopy`.
 ### joinbyv
 Batch join multiple tables into one master table.  
 Denormalization of star schema and snowflake schema to flat fact table.  
-`?joinbyv`
 
 ```r
-names(X) # list tables in star schema
-#> [1] "SALES"     "CUSTOMER"  "PRODUCT"   "GEOGRAPHY" "TIME"      "CURRENCY"
-sapply(X, nrow) # nrow of each tbl
+sapply(X, nrow) # nrow of each tbl in star schema
 #>     SALES  CUSTOMER   PRODUCT GEOGRAPHY      TIME  CURRENCY 
 #>    100000       100      1000        50      1826        49
 # denormalize 
