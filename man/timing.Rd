@@ -78,6 +78,7 @@ db("dwtools_timing")
 options("dwtools.timing"=TRUE)
 r = db(DT, "sales")
 db("dwtools_timing")
+# for extended auto timing usage try now DT "chaining" example from ?db
 
 # vectorized result as attribute - still by auto timing option
 options("dwtools.timing.conn.name"=NULL)
