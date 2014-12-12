@@ -7,7 +7,7 @@
 #' @export
 #' @example tests/idxv_examples.R
 idxv <- function(DT, Idx){
-  stopifnot(is.list(Idx))
+  stopifnot(is.data.table(DT), is.list(Idx))
   IDX <- lapply(Idx, function(idx){
     res = DT[, idx, with=FALSE]
     res[, `__dwtools_idx`:=1:nrow(res)]
