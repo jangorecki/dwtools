@@ -291,18 +291,28 @@ db <- function(x, ..., key,
 #' @param source.conn.name character scalar
 #' @param target.table.name character vector of tables names to copy to target connection
 #' @param target.conn.name character scalar
+#' @param timing logical measure timing
 #' @param verbose integer status messages
-#' @seealso \link{db}
+#' @seealso \link{db}, \link{timing}
 #' @export
 #' @examples
 #' # see the last example in ?db
-dbCopy <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, verbose=getOption("dwtools.verbose")){
+dbCopy <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, timing=getOption("dwtools.timing"), verbose=getOption("dwtools.verbose")){
   stopifnot(length(source.conn.name)==1 && length(target.conn.name)==1)
   stopifnot(length(source.table.name)==length(target.table.name))
   # do one copy
-  dbCopy.one <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, verbose){
-    # TODO pre and post processing
-    x = db(
+  dbCopy.one <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, .timing, verbose){
+    if(.timing==TRUE) x = eval(bquote(timing(
+      db(
+        x <- db(.(source.table.name), .(source.conn.name)), # x <- db() # required for nrow_in
+        .(target.table.name),
+        .(target.conn.name)
+      ),
+      nrow_in = nrowDT(x),
+      .timing = .timing,
+      verbose = verbose - 1
+    ))) # log argument values
+    else x = db(
       db(source.table.name, source.conn.name),
       target.table.name,
       target.conn.name
@@ -311,7 +321,7 @@ dbCopy <- function(source.table.name, source.conn.name, target.table.name, targe
     x
   }
   # batch copy
-  mx = mapply(dbCopy.one, source.table.name, target.table.name, MoreArgs = list(source.conn.name=source.conn.name, target.conn.name=target.conn.name, verbose=verbose-1), SIMPLIFY = FALSE)
+  mx = mapply(dbCopy.one, source.table.name, target.table.name, MoreArgs = list(source.conn.name=source.conn.name, target.conn.name=target.conn.name, .timing=timing, verbose=verbose-1), SIMPLIFY = FALSE)
   if(verbose > 0) cat(paste0(as.character(Sys.time()),": dbCopy; copy from ",paste(source.conn.name,target.conn.name,sep=" to ")," completed for ",length(target.table.name)," tables"),"\n",sep="")
   invisible(mx)
 }

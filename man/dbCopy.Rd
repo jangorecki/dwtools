@@ -4,6 +4,7 @@
 \title{Copy tables between databases}
 \usage{
 dbCopy(source.table.name, source.conn.name, target.table.name, target.conn.name,
+  timing = getOption("dwtools.timing"),
   verbose = getOption("dwtools.verbose"))
 }
 \arguments{
@@ -15,6 +16,8 @@ dbCopy(source.table.name, source.conn.name, target.table.name, target.conn.name,
 
 \item{target.conn.name}{character scalar}
 
+\item{timing}{logical measure timing}
+
 \item{verbose}{integer status messages}
 }
 \description{
@@ -24,6 +27,6 @@ Copy tables between databases
 # see the last example in ?db
 }
 \seealso{
-\link{db}
+\link{db}, \link{timing}
 }
 

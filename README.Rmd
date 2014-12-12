@@ -65,6 +65,7 @@ SALES[,.SD,keyby=list(geog_code) # setkey
         ]
 ```
 `db` function accepts vector of sql statements / table names to allow batch processing.  
+All `db` function calls can be logged by via argument `timing=TRUE`, or automatically (and not only for `db`) via `options("dwtools.timing"=TRUE)`. See `?timing`.    
 In case of tables migration see `?dbCopy`.
 
 ### joinbyv
@@ -92,7 +93,7 @@ print(names(DT))
 ### idxv
 DT binary search on multiple keys, also known as *Nth setkey*.  
 Creates custom indices for a data.table object. May require lot of memory.  
-```{r idxv}
+```{r idxv, results='hide'}
 DT = X$SALES
 names(DT)
 # create some particular indices

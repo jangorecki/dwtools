@@ -96,6 +96,7 @@ SALES[,.SD,keyby=list(geog_code) # setkey
         ]
 ```
 `db` function accepts vector of sql statements / table names to allow batch processing.  
+All `db` function calls can be logged by via argument `timing=TRUE`, or automatically (and not only for `db`) via `options("dwtools.timing"=TRUE)`. See `?timing`.    
 In case of tables migration see `?dbCopy`.
 
 ### joinbyv
@@ -135,8 +136,6 @@ Creates custom indices for a data.table object. May require lot of memory.
 ```r
 DT = X$SALES
 names(DT)
-#> [1] "cust_code" "prod_code" "geog_code" "time_code" "curr_code" "amount"   
-#> [7] "value"
 # create some particular indices
 Idx = list(
   c("cust_code", "prod_code", "geog_code"),
@@ -147,29 +146,10 @@ IDX = idxv(DT, Idx)
 
 # binary search on first index # DT[cust_code=="id020" & prod_code==847 & geog_code=="AK"]
 DT[CJI(IDX,"id020",847,"AK")]
-#>    cust_code prod_code geog_code  time_code curr_code   amount  value
-#> 1:     id020       847        AK 2010-01-15       XDG 442.8276 535683
 # binary search on second index # DT[cust_code=="id006" & geog_code=="UT" & curr_code=="NOK"]
 DT[CJI(IDX,"id006",TRUE,"UT",TRUE,"NOK")]
-#>    cust_code prod_code geog_code  time_code curr_code   amount    value
-#> 1:     id006       649        UT 2012-04-09       NOK 319.6425 991672.6
-#> 2:     id006       834        UT 2012-03-04       NOK 243.9732 401271.7
-#> 3:     id006       822        UT 2013-03-08       NOK 351.5066 678613.7
-#> 4:     id006       439        UT 2010-06-09       NOK 191.3054 132968.5
-#> 5:     id006       398        UT 2010-09-27       NOK  98.2871 630397.4
 # binary search on third index # DT[prod_code==323 & geog_code=="OR"]
 DT[CJI(IDX,TRUE,323,"OR")]
-#>     cust_code prod_code geog_code  time_code curr_code   amount     value
-#>  1:     id013       323        OR 2010-02-24       KZT 371.2025 970059.67
-#>  2:     id028       323        OR 2012-04-28       NOK 198.0290 949660.54
-#>  3:     id038       323        OR 2012-07-14       IQD 969.6501 911738.21
-#>  4:     id038       323        OR 2011-01-16       NVC 887.9894 814821.16
-#>  5:     id046       323        OR 2014-04-20       GBP 515.5613 906815.58
-#>  6:     id054       323        OR 2011-07-07       CZK 155.9163 292294.15
-#>  7:     id054       323        OR 2012-08-17       GEL  80.4159  58357.41
-#>  8:     id059       323        OR 2011-07-13       CNY 971.1801 228113.79
-#>  9:     id060       323        OR 2013-04-09       DKK 694.1774 945586.22
-#> 10:     id062       323        OR 2010-12-02       LTL 909.8948 786753.77
 ```
 
 ## Other functions
