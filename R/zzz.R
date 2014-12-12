@@ -14,7 +14,7 @@
   # db
   
   options("dwtools.db.preprocess"=FALSE)
-  options("dwtools.db.postprocess"=TRUE)
+  options("dwtools.db.postprocess"=FALSE)
   options("dwtools.db.auto.table.name.ncol"=4)
   options("dwtools.db.auto.table.name.nchar"=4)
   options("dwtools.db.dict"=db_dict())
