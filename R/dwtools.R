@@ -10,7 +10,7 @@
 #' }
 #' @note All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
 #' @docType package
-#' @import data.table digest
+#' @import data.table
 #' @name dwtools
 NULL
 

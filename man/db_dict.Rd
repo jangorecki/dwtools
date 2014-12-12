@@ -6,7 +6,7 @@
 db_dict()
 }
 \description{
-Dictionary for databases drivers write, read, get, send, schematable, preprocess, postprocess.
+Dictionary for databases drivers write, read, get, send, schematable, preprocess, postprocess. Extend here for new db/interface (PR welcome). Live extend by option \code{options("dwtools.db.dict"=db_dict())}.
 }
 \keyword{internal}
 

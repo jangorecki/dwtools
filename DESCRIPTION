@@ -8,7 +8,8 @@ Maintainer: Jan Gorecki <J.Gorecki@wit.edu.plt>
 Depends:
     data.table (>= 1.9.5)
 Imports:
-    digest
+    digest,
+    devtools
 Suggests:
     jsonlite,
     DBI,

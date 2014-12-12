@@ -1,110 +1,4 @@
 
-# db dict -----------------------------------------------------------------
-
-#' @title db_dict
-#' @description Dictionary for databases drivers write, read, get, send, schematable, preprocess, postprocess.
-#' @keywords internal
-db_dict <- function(){
-  db.dict = data.table(
-    drvName = c("SQLite","PostgreSQL","MySQL","Oracle","ODBC","couchdb","csv"),
-    package = c("RSQLite","RPostgreSQL","RMySQL","ROracle","RODC","RCurl","data.table"),
-    write = list(
-      function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
-      function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
-      function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
-      function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE),
-      function(conn, name, value) as.logical(sqlSave(channel=conn, dat=value, tablename=name, rownames=FALSE)),
-      function(conn, name, value){
-        stop("function not ready")
-        library(jsonlite)
-        library(RCurl)      
-        host = "127.0.0.1"
-        port = "5984"
-        dbname = "dwtools"
-        
-        # write
-        name = "my_dt"
-        DT = data.table(a = 1:5, b = letters[1:5])
-        rawUrl = httpPUT(paste0("http://",host,":",port,"/",dbname,"/",name),
-                         httpheader=c('Content-Type'='application/json'),
-                         postfields=toJSON(DT))
-        fromJSON(rawUrl)
-        
-        # read
-        name = "my_dt"
-        res = fromJSON(httpGET(paste0("http://",host,":",port,"/",dbname,"/",name)))
-        tech.res = copy(res[names(res) %like% "^_"])
-        res[names(res) %like% "^_"] = NULL
-        setDT(res)
-        
-        # get/send
-        x = "select * from tablea"
-        res = fromJSON(httpGET(paste0("http://",host,":",port,"/",dbname,"/",x)))
-        tech.res = copy(res[names(res) %like% "^_"])
-        res[names(res) %like% "^_"] = NULL
-        setDT(res)
-      },
-      function(conn, name, value) if(is.null(write.csv(x=value, file=name, row.names=FALSE))) TRUE else FALSE
-    ),
-    read = list(
-      function(conn, name) dbReadTable(conn=conn, name=name),
-      function(conn, name) dbReadTable(conn=conn, name=name),
-      function(conn, name) dbReadTable(conn=conn, name=name),
-      function(conn, name) dbReadTable(conn=conn, name=name),
-      function(conn, name) sqlQuery(channel=conn, query=paste0("SELECT * FROM ",name)),
-      function(conn, name) NULL,
-      function(conn, name) fread(input=name)
-    ),
-    get = list(
-      function(conn, statement) dbGetQuery(conn=conn, statement=statement),
-      function(conn, statement) dbGetQuery(conn=conn, statement=statement),
-      function(conn, statement) dbGetQuery(conn=conn, statement=statement),
-      function(conn, statement) dbGetQuery(conn=conn, statement=statement),
-      function(conn, statement) sqlQuery(channel=conn, query=statement),
-      function(conn, statement) NULL,
-      function(conn, statement) stop("not possible to `get` on csv, provide filename to `x` to invoke `read` instead of `get`", call.=FALSE)
-    ),
-    send = list(
-      function(conn, statement) dbSendQuery(conn=conn, statement=statement),
-      function(conn, statement) dbSendQuery(conn=conn, statement=statement),
-      function(conn, statement) dbSendQuery(conn=conn, statement=statement),
-      function(conn, statement) dbSendQuery(conn=conn, statement=statement),
-      function(conn, statement) sqlQuery(channel=conn, query=statement),
-      function(conn, statement) NULL,
-      function(conn, statement) stop("not possible to `send` to csv", call.=FALSE)
-    ),
-    tablename = list(
-      function(x) x,
-      function(x){ r = strsplit(x,".",TRUE)[[1]]; if(length(r) > 2) stop("Table name should contain at most one dot for schema.table mapping") else r },
-      function(x) x,
-      function(x) x,
-      function(x) x,
-      function(x) x,
-      function(x) paste(x,"csv",sep=".")
-    ),
-    preprocess = list(
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT
-    ),
-    postprocess = list(
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT,
-      function(DT) DT
-    ),
-    key = "drvName"
-  )
-  return(db.dict)
-}
-
 # technical ---------------------------------------------------------------
 
 #' @title auto.table.name
@@ -188,7 +82,7 @@ list.sub <- function(x, i, fill=NULL){
 #' @param .db.postprocess logical.
 #' @param .db.conns list of connections uniquely named.
 #' @param .db.dict data.table db interface dictionary.
-#' @param timing logical measure timing of queries, read \link{timing}.
+#' @param timing logical measure timing for vectorized usage, read \link{timing}, for scalar arguments it might be better to use \code{timing(db(...))}.
 #' @param verbose integer, if greater than 0 then print debugging messages.
 #' @details Function is designed to be slim and chainable in data.table \code{`[`} operator.
 #' \itemize{
@@ -284,7 +178,8 @@ db <- function(x, ..., key,
   # write: 1 DT save to 1 table in 1 conn
   # read: 1 table in 1 conn
   # get/send: 1 sql in 1 conn
-  db.one <- function(conn.name, sql, name, action, DT, .db.conns, .db.dict, timing, verbose){
+  
+  db.one <- function(conn.name, sql, name, action, DT, .db.conns, .db.dict, verbose){
     .db.conn = .db.conns[[conn.name]]
     msg <- paste0(as.character(Sys.time()),": db.one")
     if(getOption("dwtools.db.one.debug",FALSE)) browser()
@@ -322,12 +217,22 @@ db <- function(x, ..., key,
     if(verbose > 0) cat(msg,"; processed ",action," in ",conn.name,"\n",sep="")
     return(DT)
   }
+  db.one.is.timing <- function(conn.name, sql, name, action, DT, .db.conns, .db.dict, .timing, verbose){
+    if(.timing==TRUE) return(eval(bquote(
+      timing(db.one(conn.name=.(conn.name), sql=.(sql), name=.(name), action=.(action), DT=DT, .db.conns=.db.conns, .db.dict=.db.dict, verbose=.(verbose)),
+             nrow_in = nrowDT(DT),
+             .timing = .timing,
+             verbose = verbose-1)
+    ))) # log argument values
+    db.one(conn.name=conn.name, sql=sql, name=name, action=action, DT=DT, .db.conns=.db.conns, .db.dict=.db.dict, verbose=verbose)
+  }
   
   #### Recycle inputs and execute
   # write:
   # 1 DT save to 1 table in 1 conn
   # 1 DT save to 1 table in X conns
   # 1 DT save to X tables in X conns
+  # 1 DT save to X tables in 1 conn
   # read:
   # 1 table in 1 conn
   # 1 table in X conns
@@ -344,7 +249,7 @@ db <- function(x, ..., key,
   if(N == 1){
     if(length(sql)!=N) stop("Invalid sql statement length, sql statements length should be equal to 1 (to be recycled) or it should match to connection names length or .") # TODO test
     if(length(name)!=N) stop("Invalid table names length, table names length should be equal to 1 (to be recycled) or it should match to connection names length.") # TODO test
-    x = db.one(conn.name=conn.name, sql=sql, name=name, action=action, DT=x, .db.conns=.db.conns, .db.dict=.db.dict, timing=timing, verbose=verbose-1)
+    x = db.one.is.timing(conn.name=conn.name, sql=sql[[1]], name=name, action=action, DT=x, .db.conns=.db.conns, .db.dict=.db.dict, .timing=timing, verbose=verbose-1)
     msg <- paste0(msg,"; processed ",action," in ",conn.name)
     if(is.data.table(x) && !missing(key) && !is.null(key) && is.character(key)){
       setkeyv(x,key)
@@ -369,7 +274,8 @@ db <- function(x, ..., key,
         else stop("Invalid table names length, table names length should be equal to 1 (to be recycled) or it should match to connection names length.") # TODO test
       }
     } # recycling
-    x = mapply(FUN=db.one, conn.name=conn.name, sql=sql, name=name, MoreArgs=list(action=action, DT=x, .db.conns=.db.conns, .db.dict=.db.dict, timing=timing, verbose=verbose-1), SIMPLIFY=FALSE)
+    x = mapply(FUN=db.one.is.timing, conn.name=conn.name, sql=sql, name=name, MoreArgs=list(action=action, DT=x, .db.conns=.db.conns, .db.dict=.db.dict, .timing=timing, verbose=verbose-1), SIMPLIFY=FALSE)
+    if(timing && is.null(getOption("dwtools.timing.conn.name"))) timingv(x)
     msg <- paste0(msg,"; mapply db.one completed")
   } # execute batch, recycle args, return list of DTs or 'send' results
   

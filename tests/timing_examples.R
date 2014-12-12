@@ -3,7 +3,7 @@ library(dwtools)
 options("dwtools.verbose"=3)  # turn on status messages printed to console
 
 # populate DT
-DT = dw.populate(N=1e6, scenario="fact")
+DT = dw.populate(N=1e4, scenario="fact")
 
 # classic time measurement
 system.time(
@@ -13,7 +13,7 @@ system.time(
 # timing as result attribute
 r = timing(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")],
-  nrow(DT)
+  nrow_in = nrow(DT)
 )
 print(r)
 attr(r,"timing")
@@ -32,6 +32,22 @@ r = timing(
 print(r)
 attr(r,"timing",TRUE)
 db("dwtools_timing")
+
+# timing db function, scalar
+r = timing(db(DT, "sales"), nrow(DT))
+#r = db(DT, "sales", "sqlite1", timing=TRUE)
+db("dwtools_timing")
+db("sales")
+db("DROP TABLE sales")
+
+# timing vectorized db function
+r = db(DT, c("sales","sales_20141211"),timing=TRUE) # insert DT to two tables, including timing
+db("dwtools_timing")
+
+# vectorized result as attribute
+options("dwtools.timing.conn.name"=NULL)
+r = db(DT, c("sales","sales_20141211"),timing=TRUE) # insert DT to two tables, including timing
+attr(r,"timing",TRUE) # already combined
 
 dbDisconnect(sqlite1$conn)
 file.remove(sqlite1$dbname)

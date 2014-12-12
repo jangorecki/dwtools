@@ -23,7 +23,7 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
 
 \item{.db.dict}{data.table db interface dictionary.}
 
-\item{timing}{logical measure timing of queries, read \link{timing}.}
+\item{timing}{logical measure timing for vectorized usage, read \link{timing}, for scalar arguments it might be better to use \code{timing(db(...))}.}
 
 \item{verbose}{integer, if greater than 0 then print debugging messages.}
 
