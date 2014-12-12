@@ -44,12 +44,18 @@ db("DROP TABLE sales")
 r = db(DT, c("sales","sales_20141211"),timing=TRUE) # insert DT to two tables, including timing
 db("dwtools_timing")
 
-# vectorized result as attribute
+# auto timing any db calls
+options("dwtools.timing"=TRUE)
+r = db(DT, "sales")
+db("dwtools_timing")
+
+# vectorized result as attribute - still by auto timing option
 options("dwtools.timing.conn.name"=NULL)
-r = db(DT, c("sales","sales_20141211"),timing=TRUE) # insert DT to two tables, including timing
+r = db(DT, c("sales","sales_20141211")) # insert DT to two tables
 attr(r,"timing",TRUE) # already combined
 
 dbDisconnect(sqlite1$conn)
 file.remove(sqlite1$dbname)
 options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
 options("dwtools.timing.conn.name"=NULL)
+options("dwtools.timing"=FALSE)
