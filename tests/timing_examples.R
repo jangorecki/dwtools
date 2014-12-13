@@ -13,7 +13,7 @@ system.time(
 # timing as result attribute
 r = timing(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")],
-  nrow_in = nrow(DT)
+  in.n = nrow(DT)
 )
 print(r)
 attr(r,"timing")

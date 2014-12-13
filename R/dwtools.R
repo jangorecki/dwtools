@@ -43,3 +43,12 @@ is.int.POSIXct <- function(x, date_from = as.POSIXct("1970-01-01"), date_to = as
 nrowDT <- function(x){
   if(any(c("data.frame","data.table") %in% class(x))) nrow(x) else NA_integer_
 }
+
+#' @title nrowDTlengthVec
+#' @description Return *nrow* if DT, *length* if Vec else *NA*.
+#' @keywords internal
+nrowDTlengthVec <- function(x){
+  if(any(c("data.frame","data.table") %in% class(x))) nrow(x)
+  else if(is.vector(x)) length(x)
+  else NA_integer_
+}

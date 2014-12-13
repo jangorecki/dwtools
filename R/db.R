@@ -220,7 +220,7 @@ db <- function(x, ..., key,
   db.one.is.timing <- function(conn.name, sql, name, action, DT, .db.conns, .db.dict, .timing, verbose){
     if(.timing==TRUE) return(eval(bquote(
       timing(db.one(conn.name=.(conn.name), sql=.(sql), name=.(name), action=.(action), DT=DT, .db.conns=.db.conns, .db.dict=.db.dict, verbose=.(verbose)),
-             nrow_in = nrowDT(DT),
+             in.n = nrowDTlengthVec(DT),
              .timing = .timing,
              verbose = verbose-1)
     ))) # log argument values
@@ -305,11 +305,11 @@ dbCopy <- function(source.table.name, source.conn.name, target.table.name, targe
   dbCopy.one <- function(source.table.name, source.conn.name, target.table.name, target.conn.name, .timing, verbose){
     if(.timing==TRUE) x = eval(bquote(timing(
       db(
-        x <- db(.(source.table.name), .(source.conn.name)), # x <- db() # required for nrow_in
+        x <- db(.(source.table.name), .(source.conn.name)), # x <- db() # required for in.n
         .(target.table.name),
         .(target.conn.name)
       ),
-      nrow_in = nrowDT(x),
+      in.n = nrowDTlengthVec(x),
       .timing = .timing,
       verbose = verbose - 1
     ))) # log argument values

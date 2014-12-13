@@ -3,7 +3,7 @@
 \alias{timing}
 \title{Measure timing}
 \usage{
-timing(expr, nrow_in = NA_integer_, .timing = TRUE,
+timing(expr, in.n = NA_integer_, .timing = TRUE,
   .timing.name = getOption("dwtools.timing.name"),
   .timing.conn.name = getOption("dwtools.timing.conn.name"),
   verbose = getOption("dwtools.verbose"))
@@ -11,7 +11,7 @@ timing(expr, nrow_in = NA_integer_, .timing = TRUE,
 \arguments{
 \item{expr}{expression}
 
-\item{nrow_in}{integer manually provided input object nrow}
+\item{in.n}{integer manually provided input object nrow}
 
 \item{.timing}{logical}
 
@@ -43,7 +43,7 @@ system.time(
 # timing as result attribute
 r = timing(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")],
-  nrow_in = nrow(DT)
+  in.n = nrow(DT)
 )
 print(r)
 attr(r,"timing")

@@ -4,7 +4,7 @@
 #' @title Measure timing
 #' @description Collect timings and nrows when possible.
 #' @param expr expression
-#' @param nrow_in integer manually provided input object nrow
+#' @param in.n integer manually provided input object nrow
 #' @param .timing logical
 #' @param .timing.name character
 #' @param .timing.conn.name character
@@ -14,7 +14,7 @@
 #' @import digest devtools
 #' @export
 #' @example tests/timing_examples.R
-timing <- function(expr, nrow_in = NA_integer_,
+timing <- function(expr, in.n = NA_integer_,
                    .timing = TRUE,
                    .timing.name = getOption("dwtools.timing.name"),
                    .timing.conn.name = getOption("dwtools.timing.conn.name"),
@@ -26,8 +26,8 @@ timing <- function(expr, nrow_in = NA_integer_,
                               dwtools_session = getOption("dwtools.session"),
                               expr = paste(deparse(subx, width.cutoff=500L),collapse="\n"),
                               expr_crc32 = digest::digest(subx,algo="crc32"),
-                              nrow_in = nrow_in,
-                              nrow_out = nrowDT(r),
+                              in_n = in.n,
+                              out_n = nrowDTlengthVec(r),
                               user_self = user.self,
                               sys_self = sys.self,
                               elapsed = elapsed,
