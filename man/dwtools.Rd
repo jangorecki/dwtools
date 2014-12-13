@@ -14,7 +14,7 @@ The core functions includes:
 \item \link{joinbyv} a denormalization of star schema and snowflake schema to flat table.
 \item \link{dw.populate} populate star schema data.
 \item \link{timing} measure timing and rows in-out.
-\item \link{CJI} custom indices for in-memory processing.
+\item \link{idxv} custom indices for in-memory processing.
 }
 }
 \note{
