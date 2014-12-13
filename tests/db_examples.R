@@ -22,7 +22,7 @@ csv1 = list(drvName = "csv")
 options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,csv1=csv1))
 
 # library(RPostgreSQL) # install.packages("RPostgreSQL")
-# psql1 <- list(drvName="PostgreSQL", host="localhost", port="5432", dbname="dwtools", user="dwtools") # schema="" not tested
+# psql1 <- list(drvName="PostgreSQL", host="localhost", port="5432", dbname="dwtools", user="dwtools")
 # psql1$conn <- dbConnect(PostgreSQL(), host=psql1$host, port=psql1$port, dbname=psql1$dbname, user=psql1$user, password="dwtools_pass")
 # library(RMySQL) # install.packages("RMySQL")
 # mysql1 = list(drvName="MySQL", host="localhost", port="3306", dbname="dwtools", user="dwtools")
