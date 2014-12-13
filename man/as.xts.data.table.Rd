@@ -22,7 +22,7 @@ sample.dt <- data.table(date = as.Date((Sys.Date()-999):Sys.Date(),origin="1970-
 # print dt
 print(sample.dt)
 # print head of xts
-print(head(as.xts.data.table(sample.dt)))
+print(head(as.xts.data.table(sample.dt))) # xts non attached on search path
 }
 \seealso{
 \link{as.data.table.xts}

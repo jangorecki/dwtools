@@ -3,12 +3,12 @@
 \alias{as.data.table.xts}
 \title{as.data.table.xts}
 \usage{
-\method{as.data.table}{xts}(x, keep.rownames = TRUE)
+\method{as.data.table}{xts}(x, keep.index = TRUE)
 }
 \arguments{
 \item{x}{xts to convert to data.table}
 
-\item{keep.rownames}{keep xts index as \emph{index} column in result data.table}
+\item{keep.index}{keep xts index as \emph{index} column in result data.table}
 }
 \description{
 convert xts to data.table

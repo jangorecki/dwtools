@@ -15,4 +15,4 @@
 * populate star schema data
 * idxv - DT binary search on multiple keys
 * timing function including logging to db
-* as.xts method for data.table (to be moved to DT)
+* as.xts.data.table conversion method and reverse

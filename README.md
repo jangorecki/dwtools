@@ -2,7 +2,7 @@
 
 **Current version: pre 1.0.0**  
 
-Data Warehouse tools. Extension for `data.table` package for Data Warehouse related functionalities and some other helper functions.  
+Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
 Report any bugs as issues on github.
 
@@ -153,7 +153,7 @@ DT[CJI(IDX,TRUE,323,"OR")]
 ## Other functions
 A brief summary of other functions in the package.  
 * `timing` - measure time, nrow in/out, optional save to db
-* `as.xts` - wrapper method for conversion of data.table to xts (to be moved to data.table)
+* `as.xts.data.table` - wrapper method for conversion of data.table to xts and reverse
 * `vwap` - aggregate tick trades data to OHLC including VWAP
 
 ## License
