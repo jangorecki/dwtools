@@ -1,3 +1,6 @@
+suppressPackageStartupMessages(library(dwtools))
+library(testthat)
+
 context("data.table-xts conversion #882")
 
 test_that("validate_match_on_conversion", {
