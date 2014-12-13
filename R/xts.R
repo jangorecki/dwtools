@@ -8,7 +8,7 @@
 as.data.table.xts <- function(x, keep.index = TRUE){
   stopifnot(requireNamespace("xts"), !missing(x), xts::is.xts(x))
   if(!keep.index) return(setDT(as.data.frame(x, row.names=FALSE))[])
-  if("index" %in% names(x)) stop(paste0("Input xts object should not have 'index' column because it would result in duplicate column names. Rename 'index' column in xts or use `keep.index=FALSE` and add index manually as another column."))
+  if("index" %in% names(x)) stop("Input xts object should not have 'index' column because it would result in duplicate column names. Rename 'index' column in xts or use `keep.index=FALSE` and add index manually as another column.")
   r = setDT(as.data.frame(x, row.names=FALSE))
   r[, index := xts:::index.xts(x)]
   setcolorder(r,c("index",names(r)[names(r)!="index"]))[]
