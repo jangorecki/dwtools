@@ -49,7 +49,7 @@ nrowDT <- function(x){
 #' @keywords internal
 nrowDTlengthVec <- function(x){
   if(any(c("data.frame","data.table") %in% class(x))) nrow(x)
-  else if(is.vector(x)) length(x)
+  else if(is.list(x) || is.vector(x)) length(x)
   else NA_integer_
 }
 
