@@ -3,8 +3,9 @@
 
 #' @title Measure timing
 #' @description Collect timings and nrows when possible.
-#' @param expr expression
-#' @param in.n integer manually provided input object nrow
+#' @param expr expression.
+#' @param in.n integer manually provided input object nrow.
+#' @param tag character scalar custom processing message to be logged with that entry.
 #' @param .timing logical
 #' @param .timing.name character
 #' @param .timing.conn.name character
@@ -14,12 +15,13 @@
 #' @import digest devtools
 #' @export
 #' @example tests/timing_examples.R
-timing <- function(expr, in.n = NA_integer_,
+timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
                    .timing = TRUE,
                    .timing.name = getOption("dwtools.timing.name"),
                    .timing.conn.name = getOption("dwtools.timing.conn.name"),
                    verbose = getOption("dwtools.verbose")){
   if(!.timing) return(eval.parent(expr)) # easy espace
+  stopifnot(length(tag)==1)
   subx = substitute(expr)
   l = system.time(r <- eval.parent(expr))
   x = setDT(as.list(l))[,list(timestamp = devtools::with_options(options('digits.secs'=3),Sys.time()),
@@ -31,8 +33,7 @@ timing <- function(expr, in.n = NA_integer_,
                               user_self = user.self,
                               sys_self = sys.self,
                               elapsed = elapsed,
-                              user_child = user.child,
-                              sys_child = sys.child)]
+                              tag = tag)]
   if(!is.null(.timing.name) && !is.null(.timing.conn.name)) db(x, .timing.name, .timing.conn.name, timing=FALSE, verbose=verbose-1)
   else setattr(r, "timing", x)
   return(r)

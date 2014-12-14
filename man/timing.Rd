@@ -3,15 +3,17 @@
 \alias{timing}
 \title{Measure timing}
 \usage{
-timing(expr, in.n = NA_integer_, .timing = TRUE,
+timing(expr, in.n = NA_integer_, tag = NA_character_, .timing = TRUE,
   .timing.name = getOption("dwtools.timing.name"),
   .timing.conn.name = getOption("dwtools.timing.conn.name"),
   verbose = getOption("dwtools.verbose"))
 }
 \arguments{
-\item{expr}{expression}
+\item{expr}{expression.}
 
-\item{in.n}{integer manually provided input object nrow}
+\item{in.n}{integer manually provided input object nrow.}
+
+\item{tag}{character scalar custom processing message to be logged with that entry.}
 
 \item{.timing}{logical}
 
