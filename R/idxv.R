@@ -2,17 +2,24 @@
 #' @description Precalculate indices for data.table, also known as \emph{Nth key}.
 #' @param DT data.table for which generate indices.
 #' @param Idx list of character vectors, indices to generate.
+#' @param grp logical (default \emph{FALSE}), when \emph{TRUE} it will include groups id which can be used to speedup aggregations.
 #' @return list of data.table, including some meta data in attributes.
 #' @seealso \link{CJI}
 #' @export
 #' @example tests/idxv_examples.R
-idxv <- function(DT, Idx){
+idxv <- function(DT, Idx, grp = FALSE){
   stopifnot(is.data.table(DT), is.list(Idx))
   IDX <- lapply(Idx, function(idx){
     res = DT[, idx, with=FALSE]
-    res[, `__dwtools_idx`:=1:nrow(res)]
+    res[, `__dwtools_idx` := .I
+        ]
     if(is.integer(idx)) setkeyv(res, names(DT)[idx])
     else setkeyv(res, idx)
+    if(grp){
+      res[, `__dwtools_grp` := .GRP, by=key(res)]
+      setattr(res,"grp",res[,.SD[1],keyby=c("__dwtools_grp"),.SDcols=key(res)])
+    }
+    res[]
   })
   setattr(IDX,"DT.key",lapply(IDX,key))
   setattr(IDX,"DT.names",copy(names(DT)))

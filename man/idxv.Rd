@@ -3,12 +3,14 @@
 \alias{idxv}
 \title{Precalculate data.table indices}
 \usage{
-idxv(DT, Idx)
+idxv(DT, Idx, grp = FALSE)
 }
 \arguments{
 \item{DT}{data.table for which generate indices.}
 
 \item{Idx}{list of character vectors, indices to generate.}
+
+\item{grp}{logical (default \emph{FALSE}), when \emph{TRUE} it will include groups id which can be used to speedup aggregations.}
 }
 \value{
 list of data.table, including some meta data in attributes.
