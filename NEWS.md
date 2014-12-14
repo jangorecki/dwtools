@@ -16,3 +16,4 @@
 * idxv - DT binary search on multiple keys
 * timing function including logging to db
 * as.xts.data.table conversion method and reverse
+* pkgsVersion handy wrapper to compare packages version across libraries

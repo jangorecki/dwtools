@@ -155,6 +155,7 @@ A brief summary of other functions in the package.
 * `timing` - measure time, nrow in/out, optional save to db
 * `as.xts.data.table` - wrapper method for conversion of data.table to xts and reverse
 * `vwap` - aggregate tick trades data to OHLC including VWAP
+* `pkgsVersion` - handy wrapper to compare packages version across libraries
 
 ## License
 GPL-3.  
