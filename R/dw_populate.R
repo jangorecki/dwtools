@@ -59,8 +59,8 @@ dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setke
     geog_code = sample(GEOGRAPHY$geog_code, N, TRUE),
     time_code = sample(TIME$time_code, N, TRUE),
     curr_code = sample(CURRENCY$curr_code, N, TRUE),
-    amount =  round(runif(N,max=1e3),4),
-    value =  round(runif(N,max=1e6),8)
+    amount = round(runif(N,max=1e3),4),
+    value = round(runif(N,max=1e6),8)
   )
   if(scenario %in% c("star schema") && setkey){
     invisible(mapply(FUN = function(join, by) setkeyv(join,by),
