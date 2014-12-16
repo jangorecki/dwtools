@@ -33,7 +33,8 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
                               user_self = user.self,
                               sys_self = sys.self,
                               elapsed = elapsed,
-                              tag = tag)]
+                              tag = tag),
+                        verbose=FALSE] # suppress data.table verbose
   if(!is.null(.timing.name) && !is.null(.timing.conn.name)) db(x, .timing.name, .timing.conn.name, timing=FALSE, verbose=verbose-1)
   else setattr(r, "timing", x)
   return(r)
