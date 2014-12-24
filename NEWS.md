@@ -1,9 +1,14 @@
-# dwtools 1.0.0 (in dev)
+# dwtools 0.8.1
+
+* shiny app: shinyDW supports:
+  * dw.explore TO DO
+* dw.explore TO DO
+
+# dwtools 0.8.0
 
 * db simplified interface
   * tested on csv (default), SQLite, postgres
-  * should works on any DBI driver
-  * TODO: test ODBC
+  * should works on any DBI/ODBC driver (TO DO test ODBC)
   * setkey by col names or col positions
   * timing for vectorized args
   * auto timing

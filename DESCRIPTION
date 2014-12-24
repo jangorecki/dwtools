@@ -2,24 +2,24 @@ Package: dwtools
 Type: Package
 Title: Data Warehouse related functions.
 Version: 0.8.1
-Date: 2014-12-22
+Date: 2014-12-23
 Author: Jan Gorecki
 Maintainer: Jan Gorecki <J.Gorecki@wit.edu.plt>
 Depends:
     data.table (>= 1.9.5)
 Imports:
     digest,
-    devtools,
-    shiny
+    devtools
 Suggests:
     testthat,
     jsonlite,
     DBI,
     RSQLite,
     RODBC,
-    RCurl,
     xts,
-    Rbitcoin
+    Rbitcoin,
+    shiny,
+    shinyTree
 Description: Data Warehouse and data integration helpers. Database connector
     handle direct database drivers (DBI), odbc connection (RODBC), csv
     connection. Easy multiple simultaneous databases connections managing.

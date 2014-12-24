@@ -1,8 +1,8 @@
 # dwtools
 
-**Current version: pre 1.0.0**  
+**Current version: pre 0.8.1**  
 
-Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
+Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
 Report any bugs as issues on github.
 
