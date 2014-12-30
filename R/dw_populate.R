@@ -51,7 +51,7 @@ dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setke
              'CZK','HUF','LTL','RON','UAH','IDR','IQD','MNT','BRL','ARS','VEF','MXN')
   )
   CURRENCY <- # grp size fixed to 49
-    rbindlist(lapply(1:length(ct.dict), function(i) data.table(curr_code = ct.dict[[i]], currency_type = names(ct.dict[i]))))
+    rbindlist(lapply(1:length(ct.dict), function(i) data.table(curr_code = ct.dict[[i]], curr_type = names(ct.dict[i]))))
   
   SALES <- data.table(
     cust_code = sample(CUSTOMER$cust_code, N, TRUE),
