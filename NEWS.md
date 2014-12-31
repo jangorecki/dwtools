@@ -1,8 +1,7 @@
 # dwtools 0.8.1
 
-* shiny app: shinyDW supports:
-  * dw.explore TO DO
-* dw.explore TO DO
+* shinyDW supports build hierarchy
+* build hierarchy
 
 # dwtools 0.8.0
 

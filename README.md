@@ -1,8 +1,8 @@
 # dwtools
 
-**Current version: pre 0.8.1**  
+**Current version: 0.8.1**  
 
-Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
+Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization, normalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
 Report any bugs as issues on github.
 
@@ -23,7 +23,7 @@ options("dwtools.verbose" = 0) # 1+ for status message
 Not core function but it will populate data for the next examples.  
 
 ```r
-X = dw.populate(scenario="star schema")
+X = dw.populate(scenario="star")
 SALES = X$SALES
 GEOGRAPHY = X$GEOGRAPHY
 head(SALES)
@@ -120,7 +120,7 @@ DT = joinbyv(
                     NULL)
   )
 print(names(DT))
-#>  [1] "curr_code"        "currency_type"    "time_month_name" 
+#>  [1] "curr_code"        "curr_type"        "time_month_name" 
 #>  [4] "geog_region_name" "prod_group_name"  "prod_family_name"
 #>  [7] "cust_active"      "cust_code"        "prod_code"       
 #> [10] "geog_code"        "time_code"        "amount"          

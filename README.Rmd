@@ -1,11 +1,11 @@
 # dwtools
 ```{r init.tech, echo = FALSE}
-knitr::opts_chunk$set(collapse=TRUE,comment="#>",fig.path="README-",cache=FALSE)
+knitr::opts_chunk$set(collapse=TRUE,comment="#>",cache=FALSE)
 # knitr::knit("dwtools/README.Rmd","dwtools/README.md")
 ```
-**Current version: pre 0.8.1**  
+**Current version: 0.8.1**  
 
-Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
+Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization, normalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
 Report any bugs as issues on github.
 
@@ -23,7 +23,7 @@ options("dwtools.verbose" = 0) # 1+ for status message
 ### dw.populate
 Not core function but it will populate data for the next examples.  
 ```{r dw.populate}
-X = dw.populate(scenario="star schema")
+X = dw.populate(scenario="star")
 SALES = X$SALES
 GEOGRAPHY = X$GEOGRAPHY
 head(SALES)
