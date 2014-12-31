@@ -2,18 +2,18 @@
 # dw.populate -------------------------------------------------------------
 
 #' @title Populate DW data
-#' @description Populate sample DW data. By default \emph{star schema}, see \code{scenario} arg for others.
+#' @description Populate sample DW data. By default \emph{star}, see \code{scenario} arg for others.
 #' @param N integer facts volume
 #' @param K groups size
 #' @param S integer used in \link{set.seed}
-#' @param scenario character in \code{c("fact","star schema","star schema denormalized")}
-#' @param setkey logical used only for scenario \code{"star schema"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},
+#' @param scenario character in \code{c("fact","star","denormalized")}
+#' @param setkey logical used only for scenario \code{"star"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},
 #' @param verbose integer print sub statuses
-#' @details The following case \code{scenario="star schema normalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star schema"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
+#' @details The following case \code{scenario="denormalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
 #' @seealso \link{joinbyv}
 #' @export
 #' @example tests/dw_populate_examples.R
-dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setkey = TRUE, verbose = getOption("dwtools.verbose")){
+dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star", setkey = TRUE, verbose = getOption("dwtools.verbose")){
   set.seed(S)
   # N, K  taken from: https://github.com/Rdatatable/data.table/wiki/Benchmarks-%3A-Grouping#code-to-reproduce-the-timings-above-
   CUSTOMER <- # grp size: K
@@ -62,15 +62,16 @@ dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star schema", setke
     amount = round(runif(N,max=1e3),4),
     value = round(runif(N,max=1e6),8)
   )
-  if(scenario %in% c("star schema") && setkey){
+  if(scenario %in% c("star") && setkey){
     invisible(mapply(FUN = function(join, by) setkeyv(join,by),
                      join = list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), 
                      by = list("cust_code","prod_code","geog_code","time_code","curr_code"), SIMPLIFY=FALSE))
   }
-  DT = switch(scenario,
-              "fact" = SALES,
-              "star schema" = list(SALES=SALES,CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY),
-              "denormalized star schema" = joinbyv(master=SALES, join=list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), by=list("cust_code","prod_code","geog_code","time_code","curr_code")))
+  DT <- switch(scenario,
+               "fact" = SALES,
+               "star" = list(SALES=SALES,CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY),
+               "denormalize" = joinbyv(master=SALES, join=list(CUSTOMER=CUSTOMER,PRODUCT=PRODUCT,GEOGRAPHY=GEOGRAPHY,TIME=TIME,CURRENCY=CURRENCY), by=list("cust_code","prod_code","geog_code","time_code","curr_code")),
+               stop("non supported scenario"))
   if(verbose > 0) cat(as.character(Sys.time()),": dw.populate: processed scenario '",scenario,"' volume N: ",N,", groups K: ",K,"\n",sep="")
   return(DT)
 }

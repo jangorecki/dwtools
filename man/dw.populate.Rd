@@ -3,7 +3,7 @@
 \alias{dw.populate}
 \title{Populate DW data}
 \usage{
-dw.populate(N = 1e+05, K = 100, S = 1, scenario = "star schema",
+dw.populate(N = 1e+05, K = 100, S = 1, scenario = "star",
   setkey = TRUE, verbose = getOption("dwtools.verbose"))
 }
 \arguments{
@@ -13,27 +13,27 @@ dw.populate(N = 1e+05, K = 100, S = 1, scenario = "star schema",
 
 \item{S}{integer used in \link{set.seed}}
 
-\item{scenario}{character in \code{c("fact","star schema","star schema denormalized")}}
+\item{scenario}{character in \code{c("fact","star","denormalized")}}
 
-\item{setkey}{logical used only for scenario \code{"star schema"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},}
+\item{setkey}{logical used only for scenario \code{"star"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},}
 
 \item{verbose}{integer print sub statuses}
 }
 \description{
-Populate sample DW data. By default \emph{star schema}, see \code{scenario} arg for others.
+Populate sample DW data. By default \emph{star}, see \code{scenario} arg for others.
 }
 \details{
-The following case \code{scenario="star schema normalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star schema"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
+The following case \code{scenario="denormalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
 }
 \examples{
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
 options("dwtools.verbose"=3)  # turn on status messages printed to console
 
-X = dw.populate() # scenario="star schema"
+X = dw.populate() # scenario="star"
 lapply(X, head)
 
-Z = dw.populate(scenario="denormalized star schema")
+Z = dw.populate(scenario="denormalize")
 print(Z)
 
 SALES = dw.populate(scenario="fact")

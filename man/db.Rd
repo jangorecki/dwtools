@@ -184,7 +184,7 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 ### Chaining data.table: DT[...][...]
 
 # populate star schema
-dw.star = dw.populate(scenario="star schema") # list of 5 tables, 1 fact table and 4 dimensions
+dw.star = dw.populate(scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
 db(dw.star$TIME,"time") # save time to db
 db(dw.star$GEOGRAPHY,"geography") # save geography to db
 db(dw.star$SALES,"sales") # save sales FACT to db
