@@ -56,8 +56,14 @@ test_that("tablename attribute on write", {
   sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
   options("dwtools.db.conns"=list(sqlite1=sqlite1))
   DT1 = dw.populate(1e4, scenario="fact")
-  DT2 = db(copy(DT1),"my_tab1")
+  DT2 = db(copy(DT1))
+  DT2db = db(attr(DT2,"tablename",TRUE))
   dbDisconnect(sqlite1[["conn"]])
   file.remove(sqlite1[["dbname"]])
-  expect_true(all(is.null(attr(DT1,"tablename",TRUE)),identical(attr(DT2,"tablename",TRUE),"my_tab1")), info="test tablename attribute on write")
+  expect_true(all(
+    is.null(attr(DT1,"tablename",TRUE)),
+    !is.null(attr(DT2,"tablename",TRUE)),
+    data.equal.data.table(DT2,DT2db,ignore_row_order=TRUE)
+  ),
+  info="test tablename attribute on write")
 })

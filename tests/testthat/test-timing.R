@@ -11,7 +11,7 @@ test_that("catch existing timing attribute and append new", {
     setkeyv(x,names(x))[]
   }
   
-  DT <- dw.populate(N=1e5, scenario="fact")
+  DT <- dw.populate(N=1e4, scenario="fact")
   r <- timing(g(f(DT)), tag="setkeyv")
   #attr(r,"timing")[,{cat(paste0("\n# ",tag,"\n",expr),"\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
   
