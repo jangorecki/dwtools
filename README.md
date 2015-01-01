@@ -66,7 +66,6 @@ In ETL terms where `data.table` serves as **Transformation** layer, the dwtools 
 ```r
 # setup db connections
 library(RSQLite) # install.packages("RSQLite")
-#> Loading required package: DBI
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
@@ -129,7 +128,7 @@ print(names(DT))
 ```
 
 ### build_hierarchy
-Takes a dataset on input and detects hierarchies by cardinality of unique groupings of all possible variable pairs. Returns fact table and multiple dimension tables.
+Takes single dataset on input and detects hierarchies by cardinality of unique groupings of all possible variable pairs. Returns star schema: one fact table and multiple dimension tables.
 
 ```r
 X = dw.populate(N=1e5, scenario="star")

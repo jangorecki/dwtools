@@ -91,7 +91,7 @@ print(names(DT))
 ```
 
 ### build_hierarchy
-Takes a dataset on input and detects hierarchies by cardinality of unique groupings of all possible variable pairs. Returns fact table and multiple dimension tables.
+Takes single dataset on input and detects hierarchies by cardinality of unique groupings of all possible variable pairs. Returns star schema: one fact table and multiple dimension tables.
 ```{r build_hierarchy}
 X = dw.populate(N=1e5, scenario="star")
 DT <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
