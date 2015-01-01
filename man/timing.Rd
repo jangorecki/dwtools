@@ -13,7 +13,7 @@ timing(expr, in.n = NA_integer_, tag = NA_character_, .timing = TRUE,
 
 \item{in.n}{integer manually provided input object nrow.}
 
-\item{tag}{character scalar custom processing message to be logged with that entry.}
+\item{tag}{character custom processing message to be logged with that entry. Vector will be collapse to scalar by \code{getOption("dwtools.tag.sep",";")}.}
 
 \item{.timing}{logical}
 
@@ -27,7 +27,7 @@ timing(expr, in.n = NA_integer_, tag = NA_character_, .timing = TRUE,
 Collect timings and nrows when possible.
 }
 \details{
-Use option \code{options("dwtools.timing"=TRUE)} to turn on timing measurment in functions which supports timing measurement (e.g. \link{db}, \link{dbCopy}). To log timing to db connection, setup \code{options("dwtools.db.conns"}, provide connection name to \code{options("dwtools.timing.conn.name"="sqlite1")} and target table \code{options("dwtools.timing.name"="dwtools_timing")} (default) otherwise timing will be returned as \code{"timing"} attribute to the expression result.
+Use option \code{options("dwtools.timing"=TRUE)} to turn on timing measurment in functions which supports timing measurement (e.g. \link{db}, \link{build_hierarchy}, \link{dbCopy}). To log timing to db connection, setup \code{options("dwtools.db.conns"}, provide connection name to \code{options("dwtools.timing.conn.name"="sqlite1")} and target table \code{options("dwtools.timing.name"="dwtools_timing")} (default) otherwise timing will be returned as \code{"timing"} attribute to the expression result.
 }
 \examples{
 suppressPackageStartupMessages(library(data.table))
@@ -63,7 +63,7 @@ r = timing(
 )
 print(r)
 attr(r,"timing",TRUE)
-db("dwtools_timing")
+db("dwtools_timing") # query timing log from db
 
 # timing db function, scalar
 r = timing(db(DT, "sales"), nrow(DT))
@@ -76,7 +76,10 @@ db("DROP TABLE sales")
 r = db(DT, c("sales","sales_20141211"),timing=TRUE) # insert DT to two tables, including timing
 db("dwtools_timing")
 
-# auto timing any db calls
+## auto timing for supported functions:
+# db - any db calls,
+# build_hierarchy - normalization to star schema from single denormalized table,
+# dbCopy - batch tables migration
 options("dwtools.timing"=TRUE)
 r = db(DT, "sales")
 db("dwtools_timing")

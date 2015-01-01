@@ -31,7 +31,7 @@ r = timing(
 )
 print(r)
 attr(r,"timing",TRUE)
-db("dwtools_timing")
+db("dwtools_timing") # query timing log from db
 
 # timing db function, scalar
 r = timing(db(DT, "sales"), nrow(DT))
@@ -44,7 +44,10 @@ db("DROP TABLE sales")
 r = db(DT, c("sales","sales_20141211"),timing=TRUE) # insert DT to two tables, including timing
 db("dwtools_timing")
 
-# auto timing any db calls
+## auto timing for supported functions:
+# db - any db calls,
+# build_hierarchy - normalization to star schema from single denormalized table,
+# dbCopy - batch tables migration
 options("dwtools.timing"=TRUE)
 r = db(DT, "sales")
 db("dwtools_timing")
