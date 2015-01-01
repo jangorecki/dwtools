@@ -26,20 +26,20 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
   if(length(tag)>1) tag = paste(tag,collapse=getOption("dwtools.tag.sep",";"))
   tagtext <- paste(unlist(strsplit(x = tag, split = getOption("dwtools.tag.sep",";"))), collapse=paste0(getOption("dwtools.tag.sep",";")," ")) # increase readability by turning ";" into "; "
   stopifnot(length(tag)==1)
-  timestamp <- devtools::with_options(options('digits.secs'=3),Sys.time())
+  timestamp_start <- devtools::with_options(options('digits.secs'=3),Sys.time())
   if(!.timing && verbose > 0){
-    cat(as.character(timestamp),": ",tagtext,"...\n",sep="")
+    cat(as.character(timestamp_start),": ",tagtext,"...\n",sep="")
     return(eval.parent(expr))
   }
   subx = substitute(expr)
   if(verbose > 0){
-    cat(as.character(timestamp),": ",tagtext," took... ",sep="") 
+    cat(as.character(timestamp_start),": ",tagtext," took... ",sep="") 
     l = system.time(r <- eval.parent(expr))
     cat(l["user.self"]+l["sys.self"]," sec\n",sep="")
   } else {
     l = system.time(r <- eval.parent(expr))
   }
-  x = setDT(as.list(l))[,list(timestamp = timestamp,
+  x = setDT(as.list(l))[,list(timestamp = devtools::with_options(options('digits.secs'=3),Sys.time()), # timestamp_end
                               dwtools_session = getOption("dwtools.session"),
                               expr = paste(deparse(subx, width.cutoff=500L),collapse="\n"),
                               expr_crc32 = digest::digest(subx,algo="crc32"),
