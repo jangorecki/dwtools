@@ -1,6 +1,6 @@
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
+options("dwtools.verbose"=3L)  # turn on status messages printed to console
 
 # Setup db connections --------------------------------------------------------------------
 
@@ -31,8 +31,6 @@ options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,
 # library(RODBC) # install.packages("RODBC")
 # odbc1 <- list(drvName="ODBC", user="dwtools", dbname="dwtools", dsn="mydsn")
 # odbc1$conn <- odbcConnect(dsn=odbc1$dsn, uid=odbc1$user, pwd="dwtools_pass")
-# library(RCurl); library(jsonlite) # TODO: # install.packages(c("RCurl","jsonlite"))
-# cdb1 <- list(drvName="couchdb", host="localhost", port="5984", dbname="dwtools")
 
 # Basic usage --------------------------------------------------------------------
 
@@ -47,7 +45,7 @@ r1 = db(DT) # write to auto named table in default db connection (first in list)
 attr(r1,'tablename',TRUE) # auto generated table name # ?auto.table.name
 r2 = db(DT,NULL,"sqlite2") # the same above but another connection
 attr(r2,'tablename',TRUE)
-l = db(DT,c("my_tab11","my_tab22"),c("sqlite1","sqlite2")) # save into different connections and tables
+l = db(DT,c("my_tab11","my_tab22"),c("sqlite1","sqlite2")) # save into different connections and different tables
 sapply(l, function(x) attr(x,"tablename",TRUE))
 
 ### read, aka: SELECT * FROM 
@@ -56,7 +54,7 @@ db("my_tab1")
 db("my_tab2","sqlite2")
 db("my_tab1","csv1") # READ from my_tab1.csv
 r1 = db("my_tab1","sqlite1",key=c("prod_code","cust_code","geog_code","time_code")) # set key on result, useful on chaining, see 'Chaining data.table' examples below
-str(r1) # keys
+key(r1)
 db(DT, "my_tab2") # CREATE TABLE just for below line example
 l = db("my_tab2", c("sqlite1","sqlite2")) # read my_tab2 table from two connections, return list, no `key` supported! #PR welcome
 str(l)
@@ -67,7 +65,7 @@ str(l)
 
 db("SELECT * FROM my_tab1")
 r = db("SELECT * FROM my_tab2","sqlite2",key=c("prod_code","cust_code","geog_code","time_code"))
-str(r)
+key(r)
 l = db(c("SELECT * FROM my_tab1","SELECT * FROM my_tab2"),c("sqlite1","sqlite2"))
 str(l)
 
@@ -84,10 +82,10 @@ db(c("DROP TABLE my_tab1","DROP TABLE my_tab2"),c("sqlite1","sqlite2")) # multip
 
 ### easy sql scripting: DROP ALL TABLES IN ALL DBs
 
-options("dwtools.verbose"=3)
+options("dwtools.verbose"=3L)
 db.conns.names = c("sqlite1","sqlite2","sqlite3")
 
-# populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite")
+# populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite"), auto table names
 DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
 
 # populate 2 tables in each of connection, 6 tables created
@@ -96,13 +94,13 @@ DT[,{db(.SD,NULL,db.conns.names); .SD}][,{db(.SD,NULL,db.conns.names); .SD}]
 # query all tables on all connections
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names))
 
-# drop tables
+# drop all tables on all connections
 ll = lapply(1:length(tbls), function(i, tbls){
   if(nrow(tbls[[i]]) > 0) data.table(conn_name = names(tbls[i]), tbls[[i]])
   else data.table(conn_name = character(), tbls[[i]])
 }, tbls)
-r = rbindlist(ll)[,list(sql=paste0("DROP TABLE ",name), conn_name=conn_name) # build statement
-                  ][,db(sql,conn_name) # exec DROP TABLE ...
+r = rbindlist(ll)[,list(sql=paste0("DROP TABLE ",name), conn_name=conn_name, name=name) # build statement
+                  ][,list(conn_name=conn_name, name=name, res=db(sql,conn_name)) # exec DROP TABLE ...
                     ]
 # verify tables dropped
 db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
@@ -110,15 +108,15 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 ### Chaining data.table: DT[...][...]
 
 # populate star schema
-dw.star = dw.populate(scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
-db(dw.star$TIME,"time") # save time to db
-db(dw.star$GEOGRAPHY,"geography") # save geography to db
-db(dw.star$SALES,"sales") # save sales FACT to db
+X = dw.populate(scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
+db(X$TIME,"time") # save time to db
+db(X$GEOGRAPHY,"geography") # save geography to db
+db(X$SALES,"sales") # save sales FACT to db
 
 # data.table join in R directly on external SQL database
 db("geography",key="geog_code")[db("sales",key="geog_code")] # geography[sales]
 
-## Chaining including read and write directly on SQL database
+## Chaining including multiple read and multiple write directly on SQL database
 # 0. predefine aggregate function for later use
 # 1. query sales fact table from db
 # 2. aggregate to 2 dimensions
@@ -144,11 +142,12 @@ db("sales",key="geog_code" # read fact table from db
                    ][, eval(jj_aggr), keyby=c("geog_region_name","time_month_code","time_month_name")] # aggr
              ][,db(.SD) # write to db, auto.table.name
                ]
+db("SELECT name FROM sqlite_master WHERE type='table'",c("sqlite1","sqlite2"))
 
 ## Interesting to consider is
 # how much effort would such 'query' requires if developing it in (leading commercial) ETL tools?
-# can the classic ETL tools even compete with data.table transformation performance, and DBI for loading/writing performance?
-# 'express' edition with row limit cannot be well benchmarked.
+# can the classic ETL tools even compete with data.table transformation performance, and DBI loading/writing performance?
+# free 'express' edition of ETL toos do have a row limit so cannot be well benchmarked.
 
 ### Copy tables
 

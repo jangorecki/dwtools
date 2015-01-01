@@ -6,7 +6,7 @@
 timing(expr, in.n = NA_integer_, tag = NA_character_, .timing = TRUE,
   .timing.name = getOption("dwtools.timing.name"),
   .timing.conn.name = getOption("dwtools.timing.conn.name"),
-  verbose = getOption("dwtools.verbose"))
+  verbose = getOption("dwtools.timing.verbose"))
 }
 \arguments{
 \item{expr}{expression.}
@@ -21,7 +21,7 @@ timing(expr, in.n = NA_integer_, tag = NA_character_, .timing = TRUE,
 
 \item{.timing.conn.name}{character}
 
-\item{verbose}{integer, if greater than 0 then print debugging messages.}
+\item{verbose}{integer, if greater than 0 then print debugging messages. It will use \emph{tag} argument. It is designed to serve \emph{verbose} functionallity for user processes, not for the \emph{dwtools} functions.}
 }
 \description{
 Collect timings and nrows when possible.
@@ -29,10 +29,13 @@ Collect timings and nrows when possible.
 \details{
 Use option \code{options("dwtools.timing"=TRUE)} to turn on timing measurment in functions which supports timing measurement (e.g. \link{db}, \link{build_hierarchy}, \link{dbCopy}). To log timing to db connection, setup \code{options("dwtools.db.conns"}, provide connection name to \code{options("dwtools.timing.conn.name"="sqlite1")} and target table \code{options("dwtools.timing.name"="dwtools_timing")} (default) otherwise timing will be returned as \code{"timing"} attribute to the expression result.
 }
+\note{
+Timing as attribute is available for non NULL results of \emph{expr}, to make timing of NULL result function provide connection name in \code{getOption("dwtools.timing.conn.name")}, may be also \emph{csv} connection, read more at \link{db}.\cr When using verbose user should use either \code{dwtools.timing.verbose} option or \code{dwtools.verbose} option, using both at the same time may result a mess, see last example.
+}
 \examples{
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
-options("dwtools.verbose"=0) # turn off status messages printed to console
+options("dwtools.verbose"=3L, "dwtools.timing.verbose"=0L) # turn on status messages printed to console
 
 # populate DT
 DT = dw.populate(N=1e4, scenario="fact")
@@ -56,7 +59,7 @@ sqlite1 = list(drvName="SQLite",dbname="sqlite1.db")
 sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
 options("dwtools.db.conns"=list(sqlite1=sqlite1))
 options("dwtools.timing.conn.name"="sqlite1")
-#options("dwtools.timing.name"="dwtools_timing") # default value
+#options("dwtools.timing.name"="dwtools_timing") # default, timing table name
 r = timing(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")],
   nrow(DT)
@@ -89,6 +92,21 @@ options("dwtools.timing.conn.name"=NULL)
 r = db(DT, c("sales","sales_20141211")) # insert DT to two tables
 attr(r,"timing",TRUE) # already combined
 
+## verbose and timing
+
+# you should NOT use verbose for timing and verbose for its inner function at the same time as it will result a mess in verbose messages
+r = timing(db("sales", verbose=1L), nrow(DT), tag="query sales from db", verbose=1L)
+
+# for verbose on user processes use 'dwtools.timing.verbose' and 'tag' field
+options("dwtools.verbose"=0L, "dwtools.timing.verbose"=1L)
+r = timing(db("sales"), nrow(DT), tag="query sales from db")
+
+# for verbose of dwtools functions use 'dwtools.verbose'
+options("dwtools.verbose"=1L, "dwtools.timing.verbose"=0L)
+r = timing(db("sales"), nrow(DT), tag="query sales from db")
+
+## clean up
+
 dbDisconnect(sqlite1$conn)
 file.remove(sqlite1$dbname)
 options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
@@ -96,6 +114,6 @@ options("dwtools.timing.conn.name"=NULL)
 options("dwtools.timing"=FALSE)
 }
 \seealso{
-\link{db}
+\link{db}, \link{build_hierarchy}, \link{dbCopy}
 }
 

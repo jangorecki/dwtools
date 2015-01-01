@@ -43,7 +43,7 @@ common_words <- function(x, split="_"){
 #' List of:
 #' tables (multiple normalized R data.tables)
 #' cardinality matrix represents groupings between all columns (computionally extensive for big datasets) like \code{length(unq(col1))/nrow(unique(data.table(col1,col2)))}.
-#' lists of parents (including same entity attrs with \strong{any} cardinality) and childs (including same entity attrs with \strong{exact} cardinality) for each field.
+#' lists of parents (including same entity attrs with \strong{any} cardinality) and list of childs (including same entity attrs with \strong{exact} cardinality) for each field.
 #' @seealso \link{joinbyv}, \link{db}, \link{timing}
 #' @export
 #' @aliases dw.explore
@@ -60,8 +60,9 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
   if(!is.data.table(x)){
     if(is.character(x)){
       if(length(x) > 1) stop("Argument `x` can be data.table or scalar character (SQL select statement or table name), currently provided character vector is not a scalar.")
-      timing(x <- tryCatch(x<-db(x,src.db.conn.name,timing=FALSE,verbose=verbose-1), error=function(e) stop(paste0("Argument `x` in `build_hierarchy` function is not a data.table and also is not a valid `db` function argument (SQL select statement or table name). Provide data.table object or valid character argument for `db(x)`. Error details: ",e$call,": ",e$message)))
-             , NA_integer_, tag=paste("build_hierarchy",x,sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
+      xchar <- x
+      timing(x <- tryCatch(db(xchar,src.db.conn.name,timing=FALSE,verbose=0), error=function(e) stop(paste0("Argument `x` in `build_hierarchy` function is not a data.table and also is not a valid `db` function argument (SQL select statement or table name). Provide data.table object or valid character argument for `db(x)`. Error details: ",e$call,": ",e$message)))
+             , NA_integer_, tag=paste("build_hierarchy","query input data",xchar,sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
     }
   }
   stopifnot(is.data.table(x))
@@ -88,7 +89,7 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
       mx[pair,pair] <- c(NA_real_,length(select1by2)/nrow(xaggr),length(select2by1)/nrow(xaggr),NA_real_)
     }
     mx
-  }, length(pairs)*2, tag=paste("build_hierarchy","cardinality_matrix",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
+  }, length(pairs)*2, tag=paste("build_hierarchy","cardinality matrix",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
   
   # parent/child lists
   lp <- apply(mx,1,function(x) which(x==1)) # parents including same entity attrs with any cardinality
@@ -109,7 +110,7 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
     stop("dimnames argument supports only 'auto' at the moment, it will create dimension names based on common words in the column names")
   }
   dw <- list(cardinality = mx,
-             list_parents = lp, list_childs = lc,
+             parents = lp, childs = lc,
              tables = list(), relations = list())
   dw <- timing({
     for(fki in 1:length(fk_dim_names)){ # fki <- 1#:length(fk_dim_names)
@@ -120,7 +121,7 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
     }
     dw[["tables"]][[factname]] <- copy(x[,.SD,.SDcols=-c(bycols[!(bycols %in% unique(fk))])])
     dw
-  }, length(fk_dim_names)+1L, tag=paste("build_hierarchy","build_tables",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
+  }, length(fk_dim_names)+1L, tag=paste("build_hierarchy","build tables",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
   # union logs
   if(timing && is.null(getOption("dwtools.timing.conn.name"))){
     setattr(dw,"timing",rbindlist(list(attr(x,"timing",TRUE),

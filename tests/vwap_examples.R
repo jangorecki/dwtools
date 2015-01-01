@@ -1,6 +1,5 @@
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
 
 # populate tick data
 suppressPackageStartupMessages(library(Rbitcoin))

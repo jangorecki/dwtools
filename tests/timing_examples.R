@@ -1,6 +1,6 @@
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
-options("dwtools.verbose"=0) # turn off status messages printed to console
+options("dwtools.verbose"=3L, "dwtools.timing.verbose"=0L) # turn on status messages printed to console
 
 # populate DT
 DT = dw.populate(N=1e4, scenario="fact")
@@ -24,7 +24,7 @@ sqlite1 = list(drvName="SQLite",dbname="sqlite1.db")
 sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
 options("dwtools.db.conns"=list(sqlite1=sqlite1))
 options("dwtools.timing.conn.name"="sqlite1")
-#options("dwtools.timing.name"="dwtools_timing") # default value
+#options("dwtools.timing.name"="dwtools_timing") # default, timing table name
 r = timing(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")],
   nrow(DT)
@@ -56,6 +56,21 @@ db("dwtools_timing")
 options("dwtools.timing.conn.name"=NULL)
 r = db(DT, c("sales","sales_20141211")) # insert DT to two tables
 attr(r,"timing",TRUE) # already combined
+
+## verbose and timing
+
+# you should NOT use verbose for timing and verbose for its inner function at the same time as it will result a mess in verbose messages
+r = timing(db("sales", verbose=1L), nrow(DT), tag="query sales from db", verbose=1L)
+
+# for verbose on user processes use 'dwtools.timing.verbose' and 'tag' field
+options("dwtools.verbose"=0L, "dwtools.timing.verbose"=1L)
+r = timing(db("sales"), nrow(DT), tag="query sales from db")
+
+# for verbose of dwtools functions use 'dwtools.verbose'
+options("dwtools.verbose"=1L, "dwtools.timing.verbose"=0L)
+r = timing(db("sales"), nrow(DT), tag="query sales from db")
+
+## clean up
 
 dbDisconnect(sqlite1$conn)
 file.remove(sqlite1$dbname)

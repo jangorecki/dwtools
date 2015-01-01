@@ -33,7 +33,7 @@ build_hierarchy(x, factname = "fact", dimnames = "auto", deploy = FALSE,
 List of:
 tables (multiple normalized R data.tables)
 cardinality matrix represents groupings between all columns (computionally extensive for big datasets) like \code{length(unq(col1))/nrow(unique(data.table(col1,col2)))}.
-lists of parents (including same entity attrs with \strong{any} cardinality) and childs (including same entity attrs with \strong{exact} cardinality) for each field.
+lists of parents (including same entity attrs with \strong{any} cardinality) and list of childs (including same entity attrs with \strong{exact} cardinality) for each field.
 }
 \description{
 Detect hierarchies in the dataset and normalize to star schema, optionally deploy new model to db.
@@ -43,6 +43,7 @@ Only basic star schema normalization will be created. All numeric fields is cons
 }
 \examples{
 suppressPackageStartupMessages(library(dwtools))
+options("dwtools.verbose"=3)
 
 # simple 2 dimension case
 X = dw.populate(N=1e5, scenario="star")
@@ -63,6 +64,7 @@ lapply(dw$tables,head,3)
 names(dw)
 # better timing, setup ?db connection to automatically store logs in db
 dw <- build_hierarchy(x,factname="fact_sales",timing=TRUE)
+# print timing expressions and the rest of log entry
 attr(dw,"timing")[,{cat(paste0("\\n",tag,"\\n",expr),"\\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
 
 # shiny app to browse model, use following vars in Global Env:

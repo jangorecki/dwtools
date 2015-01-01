@@ -24,7 +24,6 @@ Rows where \code{amount==0} (normally should not happened) should be filtered be
 \examples{
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
 
 # populate tick data
 suppressPackageStartupMessages(library(Rbitcoin))
