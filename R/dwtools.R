@@ -78,3 +78,38 @@ pkgsVersion <- function(pkgs, libs = .libPaths()){
   setDT(l)[,pkg:=pkgs]
   setcolorder(l,c("pkg",names(l)[names(l)!="pkg"]))[]
 }
+
+# data.table helpers ------------------------------------------------------
+
+#' @title Data equal in two data.tables
+#' @description Test if data equal in two data.tables, can ignore order of rows or columns.
+#' @param DT1 data.table.
+#' @param DT2 data.table.
+#' @param ignore_row_order logical.
+#' @param ignore_col_order logical.
+#' @param check.attributes logical, only \emph{FALSE} supported.
+#' @note Duplicate names in DTs were not tested. All attributes all ignored.
+#' @export
+#' @example tests/example-data_equal_data_table.R
+data.equal.data.table <- function(DT1, DT2, ignore_row_order=FALSE, ignore_col_order=FALSE, check.attributes=FALSE){
+  if(check.attributes) stop("check.attributes TRUE is not supported, function test only the data.")
+  if(!identical(class(DT1),class(DT2))) return(FALSE)
+  if(!identical(length(DT1),length(DT2))) return(FALSE)
+  DT1 <- copy(DT1)
+  DT2 <- copy(DT2)
+  if(!ignore_row_order && !ignore_col_order) return(identical(DT1,DT2))
+  if(ignore_col_order){
+    if(!identical(names(DT1),names(DT2))){
+      if(!identical(names(DT1)[order(names(DT1))],names(DT2)[order(names(DT2))])) return(FALSE) # check if identical after sorting
+      else{
+        setcolorder(DT1,names(DT1)[order(names(DT1))])
+        setcolorder(DT2,names(DT2)[order(names(DT2))])
+      }
+    }
+  }
+  DT1[,`__dwtools_N`:=.N,by=c(names(DT1))]
+  DT2[,`__dwtools_N`:=.N,by=c(names(DT2))]
+  setkeyv(DT1,names(DT1))
+  setkeyv(DT2,names(DT2))
+  all(sapply(list(DT2[!DT1], DT1[!DT2]), function(x) nrow(x)==0L))
+}
