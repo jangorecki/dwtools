@@ -1,6 +1,6 @@
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
+options("dwtools.verbose"=0) # turn off status messages printed to console
 
 # populate DT
 DT = dw.populate(N=1e4, scenario="fact")
@@ -35,7 +35,6 @@ db("dwtools_timing") # query timing log from db
 
 # timing db function, scalar
 r = timing(db(DT, "sales"), nrow(DT))
-#r = db(DT, "sales", "sqlite1", timing=TRUE)
 db("dwtools_timing")
 db("sales")
 db("DROP TABLE sales")
@@ -53,7 +52,7 @@ r = db(DT, "sales")
 db("dwtools_timing")
 # for extended auto timing usage try now DT "chaining" example from ?db
 
-# vectorized result as attribute - still by auto timing option
+# vectorized result as attribute - still by auto timing option, again as attribute
 options("dwtools.timing.conn.name"=NULL)
 r = db(DT, c("sales","sales_20141211")) # insert DT to two tables
 attr(r,"timing",TRUE) # already combined
