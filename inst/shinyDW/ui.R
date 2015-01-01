@@ -1,18 +1,17 @@
 shinyUI(
   navbarPage(
     "shinyDW",
-    tabPanel("DW explore",
+    tabPanel("Hierarchy browser",
              fluidPage(
                sidebarLayout(
                  sidebarPanel(width = 3,
-                              shinyTree("aggr_tree")),
+                              shinyTree("tree",checkbox=TRUE,search=TRUE,dragAndDrop=FALSE)),
                  mainPanel(width = 9,
-                           #verbatimTextOutput("tree_str"),
                            dataTableOutput("aggr_dt"))
-               ),
-               wellPanel(dataTableOutput("aggr_idx_dt"))
+               )
+               #, wellPanel(verbatimTextOutput("tree_str"))
              )),
-    tabPanel("Full dataset",
+    tabPanel("Denormalize dataset",
              fluidPage(
                sidebarLayout(
                  sidebarPanel(width = 3,

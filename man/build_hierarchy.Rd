@@ -68,7 +68,7 @@ attr(dw,"timing")[,{cat(paste0("\\n",tag,"\\n",expr),"\\n",sep=""); .SD}][,.SD,.
 # shiny app to browse model, use following vars in Global Env:
 # x - denormalized table
 # dw - normalization results
-#if(interactive()) shiny::runApp(system.file("shinyDW", package="dwtools"))
+if(interactive()) shiny::runApp(system.file("shinyDW", package="dwtools"))
 
 # setup connection to db
 

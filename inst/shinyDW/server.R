@@ -1,4 +1,4 @@
-limitlen <- function(x, len=25L){
+limitlen <- function(x, len=getOption("dwtools.limitlen",25L)){
   if(length(x) > len) x[1:len]
   else x
 }
@@ -15,24 +15,25 @@ shinyServer(function(input, output, session){
       eval(bquote(x[,lapply(.SD,.(aggr_fun_input)),by=.(by_input),.SDcols=.(numcols_input)]))
     })
   })
+  
+  query_star <- reactive({
+    NULL
+  })
 
-  output$aggr_tree <- renderTree({
-    l <- split(r[,.SD,.SDcols=c(names(r)[!(names(r) %in% c("byi","bycols"))])], seq.int(nrow(r)))
-    setattr(l,"names",r[,byichar])
-    lapply(limitlen(l),function(x) as.list(x))
+  output$tree <- renderTree({
+    lapply(dw$tables, function(x) setNames(as.list(rep("",length(x))),names(x)))
   })
   output$tree_str <- renderPrint({
-    str(input$aggr_tree)
+    str(input$tree)
   })
   observe({
-    tree <- input$aggr_tree
+    tree <- input$tree
     isolate({
-      if(length(byichar_input <- unlist(get_selected(tree)))){
-        updateSelectInput(session, "by_input", selected = r[byichar==byichar_input,bycols[[1]]])
-      }
+      if(is.null(tree)) return(invisible(NULL))
+      sel <- get_selected(tree, format = "slices")
+      if(!length(sel)) return(invisible(NULL))
+      updateSelectInput(session, "by_input", selected = sapply(sel, function(sel) lapply(sel, names)))
     })
-
   })
-  output$aggr_idx_dt <- renderDataTable(r[,.SD,.SDcols=c(names(r)[!(names(r) %in% c("byi","bycols"))])], options = list(pageLength = 5, lengthMenu = c(5,10,15,100)))
   output$aggr_dt <- renderDataTable(eval(query_dt()), options = list(pageLength = 5, lengthMenu = c(5,10,15,100)))
 })
