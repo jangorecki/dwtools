@@ -111,7 +111,7 @@ list.sub <- function(x, i, fill=NULL){
 #' You can add new interfaces by extending \link{db_dict}. Pull Requests are welcome.
 #' @seealso \link{dbCopy}, \link{timing}
 #' @export
-#' @example tests/db_examples.R
+#' @example tests/example-db.R
 db <- function(x, ..., key,
                .db.preprocess = getOption("dwtools.db.preprocess"),
                .db.postprocess = getOption("dwtools.db.postprocess"),

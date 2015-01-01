@@ -15,7 +15,7 @@
 #' @seealso \link{db}, \link{build_hierarchy}, \link{dbCopy}
 #' @import digest devtools
 #' @export
-#' @example tests/timing_examples.R
+#' @example tests/example-timing.R
 timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
                    .timing = TRUE,
                    .timing.name = getOption("dwtools.timing.name"),

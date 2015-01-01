@@ -65,7 +65,7 @@ names(dw)
 # better timing, setup ?db connection to automatically store logs in db
 dw <- build_hierarchy(x,factname="fact_sales",timing=TRUE)
 # print timing expressions and the rest of log entry
-attr(dw,"timing")[,{cat(paste0("\\n",tag,"\\n",expr),"\\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
+attr(dw,"timing")[,{cat(paste0("\\n# ",tag,"\\n",expr),"\\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
 
 # shiny app to browse model, use following vars in Global Env:
 # x - denormalized table

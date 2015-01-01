@@ -13,7 +13,7 @@ dw.populate(N = 1e+05, K = 100, S = 1, scenario = "star",
 
 \item{S}{integer used in \link{set.seed}}
 
-\item{scenario}{character in \code{c("fact","star","denormalized")}}
+\item{scenario}{character in \code{c("fact","star","denormalize")}}
 
 \item{setkey}{logical used only for scenario \code{"star"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},}
 
@@ -23,7 +23,7 @@ dw.populate(N = 1e+05, K = 100, S = 1, scenario = "star",
 Populate sample DW data. By default \emph{star}, see \code{scenario} arg for others.
 }
 \details{
-The following case \code{scenario="denormalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
+The following case \code{scenario="denormalize"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
 }
 \examples{
 suppressPackageStartupMessages(library(data.table))

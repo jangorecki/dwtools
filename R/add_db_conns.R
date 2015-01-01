@@ -2,7 +2,7 @@
 #' @param \dots named connections to append on current connections dictionary at \code{getOption('dwtools.db.conns')}.
 #' @return invisibly direct return from \code{options("dwtools.db.conns"=...}.
 #' @export
-#' @example tests/add_db_conns_examples.R
+#' @example tests/example-add_db_conns.R
 add.db.conns <- function(...){
   conns = list(...)
   if(any(is.null(names(conns)) || is.na(names(conns)) || (nchar(names(conns))==0 ))){

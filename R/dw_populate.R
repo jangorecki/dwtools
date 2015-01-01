@@ -6,13 +6,13 @@
 #' @param N integer facts volume
 #' @param K groups size
 #' @param S integer used in \link{set.seed}
-#' @param scenario character in \code{c("fact","star","denormalized")}
+#' @param scenario character in \code{c("fact","star","denormalize")}
 #' @param setkey logical used only for scenario \code{"star"}, default TRUE makes dimensions populated with keys already. For non-key benchmarks use FALSE, also remember about \code{getOption("datatable.auto.index"=FALSE)},
 #' @param verbose integer print sub statuses
-#' @details The following case \code{scenario="denormalized"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
+#' @details The following case \code{scenario="denormalize"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
 #' @seealso \link{joinbyv}
 #' @export
-#' @example tests/dw_populate_examples.R
+#' @example tests/example-dw_populate.R
 dw.populate <- function(N = 1e5, K = 1e2, S = 1, scenario = "star", setkey = TRUE, verbose = getOption("dwtools.verbose")){
   set.seed(S)
   # N, K  taken from: https://github.com/Rdatatable/data.table/wiki/Benchmarks-%3A-Grouping#code-to-reproduce-the-timings-above-

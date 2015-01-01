@@ -47,7 +47,7 @@ common_words <- function(x, split="_"){
 #' @seealso \link{joinbyv}, \link{db}, \link{timing}
 #' @export
 #' @aliases dw.explore
-#' @example tests/build_hierarchy_examples.R
+#' @example tests/example-build_hierarchy.R
 build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
                             deploy = FALSE,
                             db.conn.name,

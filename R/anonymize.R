@@ -4,7 +4,7 @@
 #' @param algo character scalar to be used for \emph{digest} function in \emph{digest} package, read \code{?digest::digest}.
 #' @return character vector of hashes, same length as length of \emph{x} argument.
 #' @export
-#' @example tests/anonymize_examples.R
+#' @example tests/example-anonymize.R
 anonymize <- function(x, algo){
   if(missing(algo)){
     warning("algo argument missing, read ?digest::digest for available algos, function will use fast pseudo anonymize 'crc32', keep in mind it can be easily reversed.")

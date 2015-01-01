@@ -6,7 +6,7 @@
 #' @return list of data.table, including some meta data in attributes.
 #' @seealso \link{CJI}
 #' @export
-#' @example tests/idxv_examples.R
+#' @example tests/example-idxv.R
 idxv <- function(DT, Idx, grp = FALSE){
   stopifnot(is.data.table(DT), is.list(Idx))
   IDX <- lapply(Idx, function(idx){

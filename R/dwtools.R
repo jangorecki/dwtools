@@ -61,7 +61,7 @@ nrowDTlengthVec <- function(x){
 #' @param pkgs character vector of packages names.
 #' @param libs character vector of libraries paths to compare, vector names will be column names.
 #' @export
-#' @example tests/pkgs_version.R
+#' @example tests/example-pkgs_version.R
 pkgsVersion <- function(pkgs, libs = .libPaths()){
   # TO DO optimize code below
   l = lapply(libs, function(lib){

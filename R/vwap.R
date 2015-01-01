@@ -36,7 +36,7 @@ round.POSIXct <- function(x, units, trunc_ceiling = "trunc", tz = "UTC"){
 #' @details Rows where \code{amount==0} (normally should not happened) should be filtered before passing the tick data to the function.
 #' @return data.table aggregated to specified time units, \emph{price} column is VWAP.
 #' @export
-#' @example tests/vwap_examples.R
+#' @example tests/example-vwap.R
 vwap <- function(x, units, trunc_ceiling="trunc"){
   stopifnot(nrow(x) > 0)
   x[, list(date, price, amount, tid, type,

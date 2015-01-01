@@ -1,10 +1,6 @@
-suppressPackageStartupMessages(library(dwtools))
-library(testthat)
-
 context("data.table-xts conversion #882")
 
-test_that("validate_match_on_conversion", {
-  # Date
+test_that("validate match on conversion index Date", {
   dt <- data.table(index = as.Date((as.Date("2014-12-12")-49):as.Date("2014-12-12"),origin="1970-01-01"),
                    quantity = rep(c(1:5),10),
                    value = rep(c(1:10)*100,5))
@@ -19,8 +15,9 @@ test_that("validate_match_on_conversion", {
                info="test data.table match to data.table from xts, Date index")
   expect_equal(xt, xt_dt,
                info="test xts match to xts from data.table, Date index")
-  
-  # POSIXct
+})
+
+test_that("validate match on conversion index POSIXct", {
   dt <- data.table(index = as.POSIXct(as.Date((as.Date("2014-12-12")-49):as.Date("2014-12-12"),origin="1970-01-01"),origin="1970-01-01"),
                    quantity = rep(c(1:5),10),
                    value = rep(c(1:10)*100,5))

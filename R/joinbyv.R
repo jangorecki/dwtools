@@ -17,7 +17,7 @@
 #' @author Jan Gorecki
 #' @seealso \link{build_hierarchy}, \link{dw.populate}
 #' @export
-#' @example tests/joinbyv_examples.R
+#' @example tests/example-joinbyv.R
 joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.cartesian){
   # basic input check: master and join
   stopifnot(all(!missing(master),!missing(join))) # non missing mandatory args
