@@ -78,12 +78,11 @@ db(c("DROP TABLE my_tab1","DROP TABLE my_tab2"),c("sqlite1","sqlite2")) # multip
 
 # Advanced usage ------------------------------------------------------
 
-(DT = dw.populate(scenario="fact")) # fact table
-
-### easy sql scripting: DROP ALL TABLES IN ALL DBs
-
 options("dwtools.verbose"=3L)
 db.conns.names = c("sqlite1","sqlite2","sqlite3")
+
+### easy sql scripting: DROP ALL TABLES IN ALL DBs
+(DT = dw.populate(scenario="fact")) # fact table
 
 # populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite"), auto table names
 DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
@@ -107,7 +106,7 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 
 ### Chaining data.table: DT[...][...]
 
-# populate star schema
+# populate star schema to db
 X = dw.populate(scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
 db(X$TIME,"time") # save time to db
 db(X$GEOGRAPHY,"geography") # save geography to db
@@ -142,7 +141,7 @@ db("sales",key="geog_code" # read fact table from db
                    ][, eval(jj_aggr), keyby=c("geog_region_name","time_month_code","time_month_name")] # aggr
              ][,db(.SD) # write to db, auto.table.name
                ]
-db("SELECT name FROM sqlite_master WHERE type='table'",c("sqlite1","sqlite2"))
+db("SELECT name FROM sqlite_master WHERE type='table'")
 
 ## Interesting to consider is
 # how much effort would such 'query' requires if developing it in (leading commercial) ETL tools?

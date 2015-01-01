@@ -55,7 +55,7 @@ Table names must not contains spaces (which are accepted by some db vendors).\cr
 SQL send statements should contains spaces. E.g. sqlite \code{.tables} command will need to be written as \code{db("SELECT * FROM sqlite_master WHERE type='table'")}.\cr
 Below are the per driver name limitations:
 \itemize{
-\item \code{csv}: No \strong{get} and \strong{send} actions. Extension \emph{.csv} is automatically added to provided table name character (or to \link{auto.table.name} in table name was not provided).
+\item \code{csv}: No \strong{get} and \strong{send} actions. Extension \emph{.csv} is automatically added to provided table name character (or to \link{auto.table.name} if table name was not provided).
 }
 }
 
@@ -66,8 +66,8 @@ If writing to db and table name is missing or NULL then the \link{auto.table.nam
 
 \section{DB interface dictionary}{
 
-If you read/write to non-default schema use the \code{"my_schema1.my_tab1"} table names, it will be translated to expected format for target db (e.g. for postgres: \code{c("my_schema1","my_tabl1")}).\cr
-SQL statements are not unified.\cr
+If you read/write to non-default schema you should use \code{"my_schema1.my_tab1"} table names, it will be translated to expected format for target db (e.g. for postgres: \code{c("my_schema1","my_tabl1")}).\cr
+SQL statements are not unified but most of the syntax is already common across different db.\cr
 There are preprocessing and postprocessing functions available per defined db driver. Those functions can be used for seemless integration in case if write/read to db lose classes of the data.\cr
 This gives R ability to act as data hub and gain value as ETL tool.\cr
 You can add new interfaces by extending \link{db_dict}. Pull Requests are welcome.
@@ -153,12 +153,11 @@ db(c("DROP TABLE my_tab1","DROP TABLE my_tab2"),c("sqlite1","sqlite2")) # multip
 
 # Advanced usage ------------------------------------------------------
 
-(DT = dw.populate(scenario="fact")) # fact table
-
-### easy sql scripting: DROP ALL TABLES IN ALL DBs
-
 options("dwtools.verbose"=3L)
 db.conns.names = c("sqlite1","sqlite2","sqlite3")
+
+### easy sql scripting: DROP ALL TABLES IN ALL DBs
+(DT = dw.populate(scenario="fact")) # fact table
 
 # populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite"), auto table names
 DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
@@ -182,7 +181,7 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 
 ### Chaining data.table: DT[...][...]
 
-# populate star schema
+# populate star schema to db
 X = dw.populate(scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
 db(X$TIME,"time") # save time to db
 db(X$GEOGRAPHY,"geography") # save geography to db
@@ -217,7 +216,7 @@ db("sales",key="geog_code" # read fact table from db
                    ][, eval(jj_aggr), keyby=c("geog_region_name","time_month_code","time_month_name")] # aggr
              ][,db(.SD) # write to db, auto.table.name
                ]
-db("SELECT name FROM sqlite_master WHERE type='table'",c("sqlite1","sqlite2"))
+db("SELECT name FROM sqlite_master WHERE type='table'")
 
 ## Interesting to consider is
 # how much effort would such 'query' requires if developing it in (leading commercial) ETL tools?
