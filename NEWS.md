@@ -2,6 +2,7 @@
 
 * shinyDW supports build hierarchy
 * build hierarchy
+* anonymize
 
 # dwtools 0.8.0
 

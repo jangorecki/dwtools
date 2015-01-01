@@ -3,6 +3,7 @@
 S3method(as.data.table,xts)
 export(CJI)
 export(add.db.conns)
+export(anonymize)
 export(as.xts.data.table)
 export(build_hierarchy)
 export(db)
