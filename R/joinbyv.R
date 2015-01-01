@@ -15,6 +15,7 @@
 #' @return
 #' \emph{data.table}, denormalized master table joined to defined \emph{join} data.tables. Column order according to \code{col.subset}, no key.
 #' @author Jan Gorecki
+#' @seealso \link{build_hierarchy}, \link{dw.populate}
 #' @export
 #' @example tests/joinbyv_examples.R
 joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.cartesian){

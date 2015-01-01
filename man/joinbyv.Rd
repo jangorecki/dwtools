@@ -64,4 +64,7 @@ attr(DT,"timing")
 \author{
 Jan Gorecki
 }
+\seealso{
+\link{build_hierarchy}, \link{dw.populate}
+}
 
