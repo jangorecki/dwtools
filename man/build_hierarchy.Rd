@@ -4,71 +4,91 @@
 \alias{dw.explore}
 \title{build_hierarchy}
 \usage{
-build_hierarchy(x, deploy = FALSE, db.conn.name,
-  src.db.conn.name = names(getOption("dwtools.conns"))[1], dimnames = TRUE,
-  .db.conns = getOption("dwtools.conns"))
+build_hierarchy(x, factname = "fact", dimnames = "auto", deploy = FALSE,
+  db.conn.name, src.db.conn.name = names(getOption("dwtools.conns"))[1],
+  .db.conns = getOption("dwtools.conns"),
+  timing = getOption("dwtools.timing"),
+  verbose = getOption("dwtools.verbose"))
 }
 \arguments{
-\item{x}{data.table or SQL select statement or table name in database.}
+\item{x}{data.table or character scalar (SQL select statement or table name in \emph{src.db.conn.name} database).}
 
-\item{deploy}{logical, TRUE will overwrite the data in the target tables in connection \emph{db.conn.name}.}
+\item{factname}{character, default \emph{fact}.}
+
+\item{dimnames}{character currently only \emph{auto} supported, default. Dimension names will be created based on the common words in the fields which forms the dimension.}
+
+\item{deploy}{logical, \emph{TRUE} will \strong{overwrite} the data in the target tables in connection \emph{db.conn.name}.}
 
 \item{db.conn.name}{character deploy db connection name.}
 
 \item{src.db.conn.name}{character db connection only when \emph{x} argument is not a data.table but character SQL \emph{select} statement, or table name in database connection.}
 
-\item{dimnames}{logical currently only \emph{TRUE} supported, dimension names will be created based on the common words in the fields which forms the dimension.}
-
 \item{.db.conns}{list of connections uniquely named. See \link{db} function.}
+
+\item{timing}{logical measure timing for vectorized usage, read \link{timing}, for single row timing summary use \code{timing(build_hierarchy(...))}.}
+
+\item{verbose}{integer, if greater than 0 then print debugging messages.}
 }
 \value{
 List of:
 tables (multiple normalized R data.tables)
 cardinality matrix represents groupings between all columns (computionally extensive for big datasets) like \code{length(unq(col1))/nrow(unique(data.table(col1,col2)))}.
-lists of parents and childs for each field.
+lists of parents (including same entity attrs with \strong{any} cardinality) and childs (including same entity attrs with \strong{exact} cardinality) for each field.
 }
 \description{
-Detect hierarchies in the data set and normalize to star schema, optional deploy new model to db.
+Detect hierarchies in the dataset and normalize to star schema, optionally deploy new model to db.
+}
+\details{
+Only basic star schema normalization will be created. All numeric fields is considered as measures, others as dimensions (including integer fields). Allocation of columns to dimension is performed based on the groupings count unique of all variable pairs. See \emph{cardinality} element of the result for cardinality matrix. Due to extensive computional processing of the function be aware it can take some time to return the results. You can use \emph{timing} argument to register sub processes time or \emph{verbose} to display processing messages.
 }
 \examples{
 suppressPackageStartupMessages(library(dwtools))
 
+# simple 2 dimension case
 X = dw.populate(N=1e5, scenario="star")
 x <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
-dw <- build_hierarchy(x)
-names(dw$tables)
+dw <- build_hierarchy(x, factname="fact_sales")
+sapply(dw$tables,ncol)
+sapply(dw$tables,nrow)
 
-x <- dw.populate(N=1e6, scenario="denormalize")
+# 5 dimensions
+x <- dw.populate(N=1e5, scenario="denormalize")
 names(x)
-system.time(dw <- build_hierarchy(x))
-# cardinality matrix
+system.time(dw <- build_hierarchy(x,factname="fact_sales"))
+# cardinality matrix, top 10x10
 dw$cardinality[1:10,1:10]
 # normalized tables into star schema
 lapply(dw$tables,head,3)
 # relation defintion, processing meta data also available
 names(dw)
+# better timing, setup ?db connection to automatically store logs in db
+dw <- build_hierarchy(x,factname="fact_sales",timing=TRUE)
+attr(dw,"timing")[,{cat(paste0("\\n",tag,"\\n",expr),"\\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
 
-# connect db
+# shiny app to browse model, use following vars in Global Env:
+# x - denormalized table
+# dw - normalization results
+#if(interactive()) shiny::runApp(system.file("shinyDW", package="dwtools"))
 
-# build
+# setup connection to db
 
-# exceptions:
+# deploy to db
+
+## different data quality use cases tests:
 
 # reorder columns
+#setcolorder(x,sample(names(x),length(x),FALSE)) # random column order
 
 # alter column name to disable common_words feature
-#setnames()
+#setnames(x,c("curr_code","curr_type"),c("curr1_code","curr2_type")) # no common words within fields in dimension
 
-# break hierarchies
+# broken hierarchy
 #`:=`
 
-# add NA in the data
+# NAs
 #`:=`
-
-# shiny app to browse model
-#if(interactive()) shiny::runApp("dwtools/inst/shinyDW")
 }
 \seealso{
-\link{joinbyv}
+\link{joinbyv}, \link{db}, \link{timing}
 }
 

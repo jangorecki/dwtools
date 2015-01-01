@@ -1,9 +1,9 @@
 
 # sql relations -----------------------------------------------------------
 
-sql_relations <- function(rel, fact_table="fact"){
+sql_relations <- function(rel, factname="fact"){
   sapply(rel, function(rel){
-    sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", fact_table, rel$fk_name, rel$fk_col_name, rel$fk_table, rel$fk_col_name)
+    sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", factname, rel$fk_name, rel$fk_col_name, rel$fk_table, rel$fk_col_name)
   })
 }
 
@@ -28,34 +28,40 @@ common_words <- function(x, split="_"){
 # build hierarchy -------------------------------------------------------
 
 #' @title build_hierarchy
-#' @description Detect hierarchies in the data set and normalize to star schema, optional deploy new model to db.
-#' @param x data.table or SQL select statement or table name in database.
-#' @param deploy logical, TRUE will overwrite the data in the target tables in connection \emph{db.conn.name}.
+#' @description Detect hierarchies in the dataset and normalize to star schema, optionally deploy new model to db.
+#' @param x data.table or character scalar (SQL select statement or table name in \emph{src.db.conn.name} database).
+#' @param factname character, default \emph{fact}.
+#' @param dimnames character currently only \emph{auto} supported, default. Dimension names will be created based on the common words in the fields which forms the dimension.
+#' @param deploy logical, \emph{TRUE} will \strong{overwrite} the data in the target tables in connection \emph{db.conn.name}.
 #' @param db.conn.name character deploy db connection name.
 #' @param src.db.conn.name character db connection only when \emph{x} argument is not a data.table but character SQL \emph{select} statement, or table name in database connection.
-#' @param dimnames logical currently only \emph{TRUE} supported, dimension names will be created based on the common words in the fields which forms the dimension.
 #' @param .db.conns list of connections uniquely named. See \link{db} function.
+#' @param timing logical measure timing for vectorized usage, read \link{timing}, for single row timing summary use \code{timing(build_hierarchy(...))}.
+#' @param verbose integer, if greater than 0 then print debugging messages.
+#' @details Only basic star schema normalization will be created. All numeric fields is considered as measures, others as dimensions (including integer fields). Allocation of columns to dimension is performed based on the groupings count unique of all variable pairs. See \emph{cardinality} element of the result for cardinality matrix. Due to extensive computional processing of the function be aware it can take some time to return the results. You can use \emph{timing} argument to register sub processes time or \emph{verbose} to display processing messages.
 #' @return
 #' List of:
 #' tables (multiple normalized R data.tables)
 #' cardinality matrix represents groupings between all columns (computionally extensive for big datasets) like \code{length(unq(col1))/nrow(unique(data.table(col1,col2)))}.
-#' lists of parents and childs for each field.
-#' @seealso \link{joinbyv}
+#' lists of parents (including same entity attrs with \strong{any} cardinality) and childs (including same entity attrs with \strong{exact} cardinality) for each field.
+#' @seealso \link{joinbyv}, \link{db}, \link{timing}
 #' @export
 #' @aliases dw.explore
 #' @example tests/build_hierarchy_examples.R
-build_hierarchy <- function(x,
+build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
                             deploy = FALSE,
                             db.conn.name,
                             src.db.conn.name = names(getOption('dwtools.conns'))[1],
-                            dimnames = TRUE,
-                            .db.conns = getOption("dwtools.conns")){
+                            .db.conns = getOption("dwtools.conns"),
+                            timing = getOption("dwtools.timing"),
+                            verbose = getOption("dwtools.verbose")){
   # input validation
   if(deploy && missing(db.conn.name)) stop("Deploy to db requires defined connections, check examples in ?build_hierarchy. You can use also csv as connecetion. To use the first defined connection try `db.conn.name = names(getOption('dwtools.conns'))[1]`.")
   if(!is.data.table(x)){
     if(is.character(x)){
       if(length(x) > 1) stop("Argument `x` can be data.table or scalar character (SQL select statement or table name), currently provided character vector is not a scalar.")
-      tryCatch(x<-db(x,src.db.conn.name), error = function(e) stop(paste0("Argument `x` in `build_hierarchy` function is not a data.table and also is not a valid `db` function argument (SQL select statement or table name). Provide data.table object or valid character argument for `db(x)`. Error details: ",e$call,": ",e$message)))
+      timing(x <- tryCatch(x<-db(x,src.db.conn.name,timing=FALSE,verbose=verbose-1), error=function(e) stop(paste0("Argument `x` in `build_hierarchy` function is not a data.table and also is not a valid `db` function argument (SQL select statement or table name). Provide data.table object or valid character argument for `db(x)`. Error details: ",e$call,": ",e$message)))
+             , NA_integer_, tag=paste("build_hierarchy",x,sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
     }
   }
   stopifnot(is.data.table(x))
@@ -74,18 +80,17 @@ build_hierarchy <- function(x,
   mx <- array(NA_real_, dim=c(length(bycols),length(bycols)), dimnames=list(select=bycols,group=bycols))
   pairs <- combn(bycols,2,simplify = FALSE)
   
-  for(pair in pairs){
-    xaggr <- x[,unique(.SD),.SDcols=pair]
-    select2by1 <- xaggr[,lapply(.SD, function(col) length(unique(col))), by=c(pair[1L]), .SDcols=c(pair[2L])][[2]]
-    select1by2 <- xaggr[,lapply(.SD, function(col) length(unique(col))), by=c(pair[2L]), .SDcols=c(pair[1L])][[2]]
-    mx[pair,pair] <- c(NA_real_,length(select1by2)/nrow(xaggr),length(select2by1)/nrow(xaggr),NA_real_)
-  }
-  # mx
-  #mxi <- mx==1
-  # parent/child numbers
-  #rowSums(mxi, na.rm = TRUE) # parents number including same entity attrs with any cardinality
-  #colSums(mxi, na.rm = TRUE) # childs number including same entity attrs with exact cardinality
-  # parent/child
+  mx <- timing({
+    for(pair in pairs){
+      xaggr <- x[,unique(.SD),.SDcols=pair]
+      select2by1 <- xaggr[,lapply(.SD, function(col) length(unique(col))), by=c(pair[1L]), .SDcols=c(pair[2L])][[2]]
+      select1by2 <- xaggr[,lapply(.SD, function(col) length(unique(col))), by=c(pair[2L]), .SDcols=c(pair[1L])][[2]]
+      mx[pair,pair] <- c(NA_real_,length(select1by2)/nrow(xaggr),length(select2by1)/nrow(xaggr),NA_real_)
+    }
+    mx
+  }, length(pairs)*2, tag=paste("build_hierarchy","cardinality_matrix",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
+  
+  # parent/child lists
   lp <- apply(mx,1,function(x) which(x==1)) # parents including same entity attrs with any cardinality
   lc <- apply(mx,2,function(x) which(x==1)) # childs including same entity attrs with exact cardinality
   
@@ -97,25 +102,34 @@ build_hierarchy <- function(x,
     ins <- which(sapply(l, function(l) col %in% l))
     fk <- c(fk,setNames(names(lengs[ins])[which.max(lengs[ins])],col))
   }
-  #fk
-  if(isTRUE(dimnames)){
+  
+  if(identical(dimnames,"auto")){
     fk_dim_names <- sapply(unique(fk), function(fki) common_words(names(fk[fk==fki])))
   } else {
-    stop("dimnames argument supports only TRUE at the moment, it will create dimension names based on common words in the column names")
-    # TO DO, TEST
-    # [ ] use fk column name as dim names, same as when missing
+    stop("dimnames argument supports only 'auto' at the moment, it will create dimension names based on common words in the column names")
   }
   dw <- list(cardinality = mx,
              list_parents = lp, list_childs = lc,
              tables = list(), relations = list())
-  for(fki in 1:length(fk_dim_names)){ # fki <- 1#:length(fk_dim_names)
-    dim_name <- fk_dim_names[fki]
-    dw[["tables"]][[paste("dim",dim_name,sep="_")]] <- copy(x[,unique(.SD),.SDcols=c(names(fk)[fk==names(dim_name)])])
-    fk_name <- paste("fk","dim",dim_name,names(dim_name),sep="_")
-    dw[["relations"]][[fk_name]] <- list(fk_table=paste("dim",dim_name,sep="_"), fk_name=fk_name, fk_col_name=names(dim_name))
+  dw <- timing({
+    for(fki in 1:length(fk_dim_names)){ # fki <- 1#:length(fk_dim_names)
+      dim_name <- fk_dim_names[fki]
+      dw[["tables"]][[paste("dim",dim_name,sep="_")]] <- copy(x[,unique(.SD),.SDcols=c(names(fk)[fk==names(dim_name)])])
+      fk_name <- paste("fk","dim",dim_name,names(dim_name),sep="_")
+      dw[["relations"]][[fk_name]] <- list(fk_table=paste("dim",dim_name,sep="_"), fk_name=fk_name, fk_col_name=names(dim_name))
+    }
+    dw[["tables"]][[factname]] <- copy(x[,.SD,.SDcols=-c(bycols[!(bycols %in% unique(fk))])])
+    dw
+  }, length(fk_dim_names)+1L, tag=paste("build_hierarchy","build_tables",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
+  # union logs
+  if(timing && is.null(getOption("dwtools.timing.conn.name"))){
+    setattr(dw,"timing",rbindlist(list(attr(x,"timing",TRUE),
+                                       attr(mx,"timing",TRUE),
+                                       attr(dw,"timing",TRUE))))
   }
-  dw[["tables"]][["fact"]] <- copy(x[,.SD,.SDcols=-c(bycols[!(bycols %in% unique(fk))])])
   if(!deploy) return(dw)
+  
+  browser() # DEV
   # create db with data
   tryCatch(invisible(sapply(names(dw$tables), function(table_name) db(dw[["tables"]][[table_name]],table_name,db.conn.name))),
            error = function(e) stop(paste0("Error when write following tables: ",paste(names(dw$tables),collapse=","),". Error details: ",e$call,": ",e$message)))
@@ -124,8 +138,13 @@ build_hierarchy <- function(x,
            error = function(e) warning(paste0("Error when create following fk: ",paste(names(dw$relations),collapse=","),". Error details: ",e$call,": ",e$message)))
   # query to validate match
   l <- db(names(dw$tables),db.conn.name)
-  browser()
+  
   identical(l,dw$tables)
+  if(timing && is.null(getOption("dwtools.timing.conn.name"))){
+    setattr(dw,"timing",rbindlist(list(attr(dw,"timing",TRUE),
+                                       NULL))) # append deploy timings
+  }
+  return(dw)
 }
 
 ## process
@@ -134,8 +153,10 @@ build_hierarchy <- function(x,
 # [x] produce dim names by column names match common words
 # [x] split into dim tables
 # [ ] redundant identity variable - handle duplicates
-# [ ] move to forderv
+# [ ] move core of cardinality matrix calculation to forderv
 # [ ] check if nrow on aggregation on FK match to nrow of aggregation on all bycols, if not raise error/debug
 # [x] relations to sql fk script
-
-# [x] committed and ready, not yet build: currency dim, currency_type rename to curr_type - not related to dw.explore
+# [x] currency dim, currency_type rename to curr_type - not related to dw.explore
+# [x] timing
+# [ ] dimnames, default common words, if none then the fk column name, otherwise character vector of dimension names in fixed order.
+# [ ] vectorize columns to dimensions allocation
