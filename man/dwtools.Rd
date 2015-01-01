@@ -11,9 +11,10 @@ Extension for \link{data.table} package for Data Warehouse related functionaliti
 The core functions includes:
 \itemize{
 \item \link{db} as Extracting and Loading tool in ETL terms.
-\item \link{joinbyv} a denormalization of star schema and snowflake schema to flat table.
+\item \link{joinbyv} a denormalization of star schema and snowflake schema to single table.
 \item \link{dw.populate} populate star schema data.
-\item \link{timing} measure timing and rows in-out.
+\item \link{timing} measure timing and rows in-out, including logging to db and verbose messages.
+\item \link{build_hierarchy} transform single dataset to star schema, columns allocation based on cardinalities in unique groupings of each pair.
 \item \link{idxv} custom indices for in-memory processing.
 }
 }

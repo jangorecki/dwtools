@@ -5,8 +5,9 @@ options("dwtools.verbose"=3)  # turn on status messages printed to console
 # Setup db connections --------------------------------------------------------------------
 
 ##### define your connections
-# csv and SQLite works out of the box without configuration outside of R
-# soon should be supported postgres, RODBC, they may work already but were not tested.
+# csv and SQLite works out of the box without configuration outside of R.
+# tested on csv, sqlite, postgres, should also work on any DBI and RODBC connection.
+# examples are on three instances of sqlite and a csv.
 
 library(RSQLite) # install.packages("RSQLite")
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db")
@@ -15,12 +16,12 @@ sqlite2 = list(drvName="SQLite",dbname="sqlite2.db")
 sqlite2$conn = dbConnect(SQLite(), dbname=sqlite2$dbname)
 sqlite3 = list(drvName="SQLite",dbname="sqlite3.db")
 sqlite3$conn = dbConnect(SQLite(), dbname=sqlite3$dbname)
-library(data.table)
 csv1 = list(drvName = "csv")
 
 # configure connections
 options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,csv1=csv1))
 
+## external dependencies required
 # library(RPostgreSQL) # install.packages("RPostgreSQL")
 # psql1 <- list(drvName="PostgreSQL", host="localhost", port="5432", dbname="dwtools", user="dwtools")
 # psql1$conn <- dbConnect(PostgreSQL(), host=psql1$host, port=psql1$port, dbname=psql1$dbname, user=psql1$user, password="dwtools_pass")
@@ -117,7 +118,7 @@ db(dw.star$SALES,"sales") # save sales FACT to db
 # data.table join in R directly on external SQL database
 db("geography",key="geog_code")[db("sales",key="geog_code")] # geography[sales]
 
-## chaining including read and write directly on SQL database
+## Chaining including read and write directly on SQL database
 # 0. predefine aggregate function for later use
 # 1. query sales fact table from db
 # 2. aggregate to 2 dimensions
@@ -143,6 +144,11 @@ db("sales",key="geog_code" # read fact table from db
                    ][, eval(jj_aggr), keyby=c("geog_region_name","time_month_code","time_month_name")] # aggr
              ][,db(.SD) # write to db, auto.table.name
                ]
+
+## Interesting to consider is
+# how much effort would such 'query' requires if developing it in (leading commercial) ETL tools?
+# can the classic ETL tools even compete with data.table transformation performance, and DBI for loading/writing performance?
+# 'express' edition with row limit cannot be well benchmarked.
 
 ### Copy tables
 
