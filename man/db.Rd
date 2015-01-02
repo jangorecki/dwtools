@@ -24,7 +24,7 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
 
 \item{.db.dict}{data.table db interface dictionary.}
 
-\item{.db.action}{character action name, use only when no recycling required and action detection not required. Supported values: write, read, get, send. User should not use following option with any other value then `options("dwtools.tmp.db.action"=NULL)` as it will lose the timing if turned on.}
+\item{.db.action}{character action name, use only when no recycling required, no action detection required, no timing required. Supported values: \emph{write, read, get, send}.}
 
 \item{timing}{logical measure timing for vectorized usage, read \link{timing}, for scalar arguments it might be better to use \code{timing(db(...))}.}
 

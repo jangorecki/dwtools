@@ -52,13 +52,11 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
                         verbose=FALSE] # suppress data.table verbose
   if(!is.null(.timing.name) && !is.null(.timing.conn.name)){
     db(x, .timing.name, .timing.conn.name, .db.action="write", timing=FALSE, verbose=0) # suppress single row of log messages display
-  } else if(!is.null(r)){
-    if(isTRUE(getOption("dwtools.timing.append")) && !is.null(attr(r,"timing",TRUE))){
-      x <- rbindlist(list(attr(r,"timing",TRUE),x)) # append timing attribute if exist
-    }
-    setattr(r, "timing", x)
-  } else{
+  } else if(is.null(r)){
     warning("timing as result attribute not possible for NULL results of expression")
+  } else {
+    if(isTRUE(getOption("dwtools.timing.append")) && !is.null(attr(r,"timing",TRUE))) x <- rbindlist(list(attr(r,"timing",TRUE),x)) # append timing attribute if exist
+    setattr(r, "timing", x)
   }
   return(r)
 }

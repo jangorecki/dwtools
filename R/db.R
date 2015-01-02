@@ -82,7 +82,7 @@ list.sub <- function(x, i, fill=NULL){
 #' @param .db.postprocess logical.
 #' @param .db.conns list of connections uniquely named.
 #' @param .db.dict data.table db interface dictionary.
-#' @param .db.action character action name, use only when no recycling required and action detection not required. Supported values: write, read, get, send. User should not use following option with any other value then `options("dwtools.tmp.db.action"=NULL)` as it will lose the timing if turned on.
+#' @param .db.action character action name, use only when no recycling required, no action detection required, no timing required. Supported values: \emph{write, read, get, send}.
 #' @param timing logical measure timing for vectorized usage, read \link{timing}, for scalar arguments it might be better to use \code{timing(db(...))}.
 #' @param verbose integer, if greater than 0 then print debugging messages.
 #' @details Function is designed to be slim and chainable in data.table \code{`[`} operator.
@@ -220,19 +220,28 @@ db <- function(x, ..., key,
     return({
       if(timing && is.null(getOption("dwtools.timing.conn.name"))) rtiming <- vector(mode="list",length(conn.name))
       r <- devtools::with_options( # using options it is possible to have cleaner tags in timing logs
-        new=c("dwtools.tmp.db.action"=action,"dwtools.timing"=FALSE,"dwtools.verbose"=verbose-1L,"dwtools.timing.append"=FALSE),
+        new=c("dwtools.tmp.db.action"=action,
+              "dwtools.verbose"=verbose-1L,
+              "dwtools.timing.append"=FALSE,
+              "dwtools.timing"=FALSE), # this suppress inner timing() calls timing, db() call are already suppressed by 'dwtools.tmp.db.action'
         code=lapply(setNames(1:length(conn.name),conn.name), pretty_log_on_timing, x=x, name=name, conn.name=conn.name, timing=timing, verbose=verbose)
       )
-      if(action=="write") r <- x
-      else if(length(r)==1){ # setkey only for scalar inputs
+      if(action=="write"){
+        if(length(r)>1) setattr(x,"tablename",NULL)
+        r <- x
+      } else if(length(r)==1){ # setkey only for scalar inputs
         r <- r[[1]]
         if(is.data.table(r) && !missing(key) && !is.null(key)){
           if(is.numeric(key)) key <- names(x)[as.integer(key)] # support for column index instead of name
           setkeyv(r,key)[]
         }
       }
-      if(timing && is.null(getOption("dwtools.timing.conn.name"))){ # union timing in attributes
-        setattr(r, "timing", rbindlist(rtiming))[]
+      if(timing){
+        if(is.null(getOption("dwtools.timing.conn.name"))){ # union timing in attributes
+          setattr(r, "timing", rbindlist(rtiming))
+        } else if(!is.null(getOption("dwtools.timing.conn.name"))){ # union timing in attributes
+          setattr(r, "timing", NULL)
+        }
       }
       if(action %in% c("write","send")) invisible(r) else r
     })

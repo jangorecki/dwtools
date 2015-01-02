@@ -68,6 +68,18 @@ test_that("tablename attribute on write", {
   expect_true(is.null(attr(DT1,"tablename",TRUE)) && !is.null(attr(DT2,"tablename",TRUE)) && data.equal.data.table(DT2,DT2db,ignore_row_order=TRUE), info="test tablename attribute on write")
 })
 
+test_that("no tablename attribute on multiple write", {
+  sqlite1 = list(drvName="SQLite",dbname="sqlite1.db")
+  sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
+  options("dwtools.db.conns"=list(sqlite1=sqlite1))
+  DT1 = dw.populate(1e4, scenario="fact")
+  DT2 = db(DT1,c("my_tab1","my_tab2"))
+  dbDisconnect(sqlite1[["conn"]])
+  file.remove(sqlite1[["dbname"]])
+  options("dwtools.db.conns"=NULL)
+  expect_true(is.null(attr(DT2,"tablename",TRUE)) && data.equal.data.table(DT1,DT2,ignore_row_order=FALSE), info="test no tablename attribute on multiple write")
+})
+
 test_that("auto.table.name unq names on write", {
   sqlite1 = list(drvName="SQLite",dbname="sqlite1.db")
   sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
