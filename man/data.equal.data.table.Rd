@@ -3,7 +3,7 @@
 \alias{data.equal.data.table}
 \title{Data equal in two data.tables}
 \usage{
-data.equal.data.table(DT1, DT2, ignore_row_order = FALSE,
+data.equal.data.table(DT1, DT2, ignore_row_order = TRUE,
   ignore_col_order = FALSE, check.attributes = FALSE)
 }
 \arguments{

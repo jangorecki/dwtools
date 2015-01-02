@@ -93,7 +93,7 @@ pkgsVersion <- function(pkgs, libs = .libPaths()){
 #' @note Duplicate names in DTs were not tested. All attributes all ignored.
 #' @export
 #' @example tests/example-data_equal_data_table.R
-data.equal.data.table <- function(DT1, DT2, ignore_row_order=FALSE, ignore_col_order=FALSE, check.attributes=FALSE){
+data.equal.data.table <- function(DT1, DT2, ignore_row_order=TRUE, ignore_col_order=FALSE, check.attributes=FALSE){
   if(check.attributes) stop("check.attributes TRUE is not supported, function test only the data.")
   stopifnot(is.data.table(DT1),is.data.table(DT2))
   if(!identical(length(DT1),length(DT2))) return(FALSE)

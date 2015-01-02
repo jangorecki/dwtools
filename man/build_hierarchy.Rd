@@ -42,14 +42,16 @@ Only basic star schema normalization will be created. All numeric fields is cons
 suppressPackageStartupMessages(library(dwtools))
 options("dwtools.verbose"=3L)
 
-# simple 2 dimension case
+## simple 2 dimension case
+
 X = dw.populate(N=1e5, scenario="star")
 x <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
 dw <- build_hierarchy(x, factname="fact_sales")
 sapply(dw$tables,ncol)
 sapply(dw$tables,nrow)
 
-# 5 dimensions
+## 5 dimensions
+
 x <- dw.populate(N=1e5, scenario="denormalize")
 names(x)
 system.time(dw <- build_hierarchy(x,factname="fact_sales"))
@@ -65,14 +67,23 @@ dw <- build_hierarchy(x,factname="fact_sales",timing=TRUE)
 # print timing expressions and the rest of log entry
 attr(dw,"timing")[,{cat(paste0("\\n# ",tag,"\\n",expr),"\\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
 
-# shiny app to browse model, use following vars in Global Env:
+## shiny app to browse model, use following vars in Global Env:
 # x - denormalized table
 # dw - normalization results
 if(interactive()) shiny::runApp(system.file("shinyDW", package="dwtools"))
 
-# setup connection to db
+## deploy to db
 
-# deploy to db
+library(RSQLite)
+sqlite1 = list(drvName="SQLite",dbname="sqlite1.db") # setup connection to db
+sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
+options("dwtools.db.conns"=list(sqlite1=sqlite1))
+x <- dw.populate(N=1e5, scenario="denormalize")
+dw <- build_hierarchy(x,factname="fact_sales",deploy=TRUE,db.conn.name="sqlite1",timing=TRUE,verbose=3L)
+db(c("fact_sales","dim_geog"))
+dbDisconnect(sqlite1[["conn"]])
+file.remove(sqlite1[["dbname"]])
+options("dwtools.db.conns"=NULL)
 
 ## different data quality use cases tests:
 

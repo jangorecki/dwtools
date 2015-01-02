@@ -120,35 +120,39 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
                                        attr(dw,"timing",TRUE))))
   }
   if(!deploy) return(dw)
-  
-  browser() # DEV
+  # drop existing tables
+  try(db(paste("DROP TABLE ",names(dw$tables)[length(dw$tables)]),db.conn.name), silent=TRUE)
+  try(db(paste("DROP TABLE ",names(dw$tables)[-length(dw$tables)]),db.conn.name), silent=TRUE)
   # create db with data
-  tryCatch(invisible(sapply(names(dw$tables), function(table_name) db(dw[["tables"]][[table_name]],table_name,db.conn.name))),
-           error = function(e) stop(paste0("Error when write following tables: ",paste(names(dw$tables),collapse=","),". Error details: ",e$call,": ",e$message)))
-  # no fk - sqlite example, only warning, results no fk on db
-  tryCatch(invisible(db(sql_relations(dw[["relations"]]),db.conn.name)),
-           error = function(e) warning(paste0("Error when create following fk: ",paste(names(dw$relations),collapse=","),". Error details: ",e$call,": ",e$message)))
-  # query to validate match
-  l <- db(names(dw$tables),db.conn.name)
-  
-  identical(l,dw$tables)
+  ct <- tryCatch(invisible(sapply(names(dw$tables), function(table_name) db(dw[["tables"]][[table_name]],table_name,db.conn.name,timing=timing,verbose=verbose-1))),
+                 error = function(e) stop(paste0("Error when write following tables: ",paste(names(dw$tables),collapse=","),". Error details: ",e$call,": ",e$message)))
+  # no FK - sqlite example, only warning, results no FK on db
+  # SQLite does not support ALTER TABLE ADD CONSTRAINT, suppress warning
+  fk <- if(getOption("dwtools.db.conns")[[db.conn.name]][["drvName"]]!="SQLite"){
+    tryCatch(invisible(db(sql_relations(dw[["relations"]],names(dw$tables)[length(dw$tables)]),db.conn.name,timing=timing,verbose=verbose-1)),
+             error = function(e){
+               warning(paste0("Error when create following FK: ",paste(names(dw$relations),collapse=","),". Error details: ",e$call[[1]],": ",e$message[[1]]),call. = FALSE)
+               NULL
+             })
+  } else NULL
   if(timing && is.null(getOption("dwtools.timing.conn.name"))){
     setattr(dw,"timing",rbindlist(list(attr(dw,"timing",TRUE),
-                                       NULL))) # append deploy timings
+                                       rbindlist(lapply(ct,function(x) attr(x,"timing",TRUE))),
+                                       rbindlist(lapply(fk,function(x) attr(x,"timing",TRUE))))))
   }
   return(dw)
 }
 
-## process
+## TO DO
 # [x] identify lowest granularity (FK) - no childs
 # [x] link dimensions to FK
 # [x] produce dim names by column names match common words
 # [x] split into dim tables
 # [ ] redundant identity variable - handle duplicates
 # [ ] move core of cardinality matrix calculation to forderv
-# [ ] check if nrow on aggregation on FK match to nrow of aggregation on all bycols, if not raise error/debug
+# [ ] tests: check if nrow on aggregation on FK match to nrow of aggregation on all bycols, if not raise error/debug
 # [x] relations to sql fk script
 # [x] currency dim, currency_type rename to curr_type - not related to dw.explore
 # [x] timing
 # [ ] dimnames, default common words, if none then the fk column name, otherwise character vector of dimension names in fixed order.
-# [ ] vectorize columns to dimensions allocation
+# [ ] vectorize process of allocation columns to dimensions
