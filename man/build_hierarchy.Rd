@@ -5,13 +5,12 @@
 \title{build_hierarchy}
 \usage{
 build_hierarchy(x, factname = "fact", dimnames = "auto", deploy = FALSE,
-  db.conn.name, src.db.conn.name = names(getOption("dwtools.conns"))[1],
-  .db.conns = getOption("dwtools.conns"),
+  db.conn.name, .db.conns = getOption("dwtools.conns"),
   timing = getOption("dwtools.timing"),
   verbose = getOption("dwtools.verbose"))
 }
 \arguments{
-\item{x}{data.table or character scalar (SQL select statement or table name in \emph{src.db.conn.name} database).}
+\item{x}{data.table source dataset.}
 
 \item{factname}{character, default \emph{fact}.}
 
@@ -20,8 +19,6 @@ build_hierarchy(x, factname = "fact", dimnames = "auto", deploy = FALSE,
 \item{deploy}{logical, \emph{TRUE} will \strong{overwrite} the data in the target tables in connection \emph{db.conn.name}.}
 
 \item{db.conn.name}{character deploy db connection name.}
-
-\item{src.db.conn.name}{character db connection only when \emph{x} argument is not a data.table but character SQL \emph{select} statement, or table name in database connection.}
 
 \item{.db.conns}{list of connections uniquely named. See \link{db} function.}
 
@@ -43,7 +40,7 @@ Only basic star schema normalization will be created. All numeric fields is cons
 }
 \examples{
 suppressPackageStartupMessages(library(dwtools))
-options("dwtools.verbose"=3)
+options("dwtools.verbose"=3L)
 
 # simple 2 dimension case
 X = dw.populate(N=1e5, scenario="star")
@@ -62,6 +59,7 @@ dw$cardinality[1:10,1:10]
 lapply(dw$tables,head,3)
 # relation defintion, processing meta data also available
 names(dw)
+
 # better timing, setup ?db connection to automatically store logs in db
 dw <- build_hierarchy(x,factname="fact_sales",timing=TRUE)
 # print timing expressions and the rest of log entry

@@ -1,4 +1,5 @@
 context("build_hierarchy tests")
+library(RSQLite)
 
 test_that("match of generated hierarchy", {
   X = dw.populate(N=1e4, scenario="star")

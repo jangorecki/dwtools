@@ -1,5 +1,5 @@
 suppressPackageStartupMessages(library(dwtools))
-options("dwtools.verbose"=3)
+options("dwtools.verbose"=3L)
 
 # simple 2 dimension case
 X = dw.populate(N=1e5, scenario="star")
@@ -18,6 +18,7 @@ dw$cardinality[1:10,1:10]
 lapply(dw$tables,head,3)
 # relation defintion, processing meta data also available
 names(dw)
+
 # better timing, setup ?db connection to automatically store logs in db
 dw <- build_hierarchy(x,factname="fact_sales",timing=TRUE)
 # print timing expressions and the rest of log entry

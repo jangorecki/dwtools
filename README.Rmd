@@ -95,7 +95,7 @@ Takes single dataset on input and detects hierarchies by cardinality of unique g
 ```{r build_hierarchy}
 X = dw.populate(N=1e5, scenario="star")
 DT <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
-print(DT)
+names(DT)
 dw <- build_hierarchy(DT, factname="fact_sales")
 sapply(dw$tables,ncol)
 sapply(dw$tables,nrow)

@@ -133,43 +133,12 @@ Takes single dataset on input and detects hierarchies by cardinality of unique g
 ```r
 X = dw.populate(N=1e5, scenario="star")
 DT <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
-print(DT)
-#>         geog_code geog_name geog_division_code geog_division_name
-#>      1:        AK    Alaska                  9            Pacific
-#>      2:        AK    Alaska                  9            Pacific
-#>      3:        AK    Alaska                  9            Pacific
-#>      4:        AK    Alaska                  9            Pacific
-#>      5:        AK    Alaska                  9            Pacific
-#>     ---                                                          
-#>  99996:        WY   Wyoming                  8           Mountain
-#>  99997:        WY   Wyoming                  8           Mountain
-#>  99998:        WY   Wyoming                  8           Mountain
-#>  99999:        WY   Wyoming                  8           Mountain
-#> 100000:        WY   Wyoming                  8           Mountain
-#>         geog_region_code geog_region_name curr_code curr_type cust_code
-#>      1:                4             West       ARS      fiat     id076
-#>      2:                4             West       ARS      fiat     id001
-#>      3:                4             West       ARS      fiat     id052
-#>      4:                4             West       ARS      fiat     id021
-#>      5:                4             West       ARS      fiat     id021
-#>     ---                                                                
-#>  99996:                4             West       XVN    crypto     id096
-#>  99997:                4             West       XVN    crypto     id037
-#>  99998:                4             West       XVN    crypto     id039
-#>  99999:                4             West       XVN    crypto     id060
-#> 100000:                4             West       XVN    crypto     id066
-#>         prod_code  time_code   amount     value
-#>      1:       274 2014-10-21 922.6593  73533.46
-#>      2:       486 2013-11-15 486.0348 545092.87
-#>      3:       455 2014-10-06 227.8771 941971.39
-#>      4:        63 2010-11-14 847.8362 362357.89
-#>      5:       570 2013-04-04 822.6551 815521.49
-#>     ---                                        
-#>  99996:       164 2013-04-05 610.7321 967104.65
-#>  99997:        69 2012-04-27  89.3637 382613.87
-#>  99998:        72 2011-01-06 229.0147 374311.12
-#>  99999:       572 2011-11-27 529.5973 324566.29
-#> 100000:       486 2011-12-05  97.7698 585999.83
+names(DT)
+#>  [1] "geog_code"          "geog_name"          "geog_division_code"
+#>  [4] "geog_division_name" "geog_region_code"   "geog_region_name"  
+#>  [7] "curr_code"          "curr_type"          "cust_code"         
+#> [10] "prod_code"          "time_code"          "amount"            
+#> [13] "value"
 dw <- build_hierarchy(DT, factname="fact_sales")
 sapply(dw$tables,ncol)
 #>      dim_geog      dim_curr dim_cust_code dim_prod_code dim_time_code 

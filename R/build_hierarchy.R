@@ -29,12 +29,11 @@ common_words <- function(x, split="_"){
 
 #' @title build_hierarchy
 #' @description Detect hierarchies in the dataset and normalize to star schema, optionally deploy new model to db.
-#' @param x data.table or character scalar (SQL select statement or table name in \emph{src.db.conn.name} database).
+#' @param x data.table source dataset.
 #' @param factname character, default \emph{fact}.
 #' @param dimnames character currently only \emph{auto} supported, default. Dimension names will be created based on the common words in the fields which forms the dimension.
 #' @param deploy logical, \emph{TRUE} will \strong{overwrite} the data in the target tables in connection \emph{db.conn.name}.
 #' @param db.conn.name character deploy db connection name.
-#' @param src.db.conn.name character db connection only when \emph{x} argument is not a data.table but character SQL \emph{select} statement, or table name in database connection.
 #' @param .db.conns list of connections uniquely named. See \link{db} function.
 #' @param timing logical measure timing for vectorized usage, read \link{timing}, for single row timing summary use \code{timing(build_hierarchy(...))}.
 #' @param verbose integer, if greater than 0 then print debugging messages.
@@ -51,21 +50,13 @@ common_words <- function(x, split="_"){
 build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
                             deploy = FALSE,
                             db.conn.name,
-                            src.db.conn.name = names(getOption('dwtools.conns'))[1],
                             .db.conns = getOption("dwtools.conns"),
                             timing = getOption("dwtools.timing"),
                             verbose = getOption("dwtools.verbose")){
   # input validation
   if(deploy && missing(db.conn.name)) stop("Deploy to db requires defined connections, check examples in ?build_hierarchy. You can use also csv as connecetion. To use the first defined connection try `db.conn.name = names(getOption('dwtools.conns'))[1]`.")
-  if(!is.data.table(x)){
-    if(is.character(x)){
-      if(length(x) > 1) stop("Argument `x` can be data.table or scalar character (SQL select statement or table name), currently provided character vector is not a scalar.")
-      xchar <- x
-      timing(x <- tryCatch(db(xchar,src.db.conn.name,timing=FALSE,verbose=0), error=function(e) stop(paste0("Argument `x` in `build_hierarchy` function is not a data.table and also is not a valid `db` function argument (SQL select statement or table name). Provide data.table object or valid character argument for `db(x)`. Error details: ",e$call,": ",e$message)))
-             , NA_integer_, tag=paste("build_hierarchy","query input data",xchar,sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
-    }
-  }
-  stopifnot(is.data.table(x))
+  if(!is.data.table(x)) stop("Argument x must be data.table")
+  
   # main
   xcols <- names(x)
   colsclass <- x[,sapply(.SD,class)]
