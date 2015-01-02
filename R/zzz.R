@@ -1,5 +1,9 @@
 .onLoad <- function(libname, pkgname){
   
+  # base
+  
+  options("digits.secs"=3L) # logging precision
+  
   # dwtools
   
   options("dwtools.session"=as.integer(Sys.time())) # dwtools session time
@@ -11,6 +15,7 @@
   options("dwtools.timing.verbose"=0L)
   options("dwtools.timing.conn.name"=NULL)
   options("dwtools.timing.name"="dwtools_timing")
+  options("dwtools.timing.append"=TRUE) # affects only append to timing attribute, for db append is always active.
   options("dwtools.tag.sep"=";")
   
   # db

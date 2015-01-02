@@ -26,7 +26,7 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
   if(length(tag)>1) tag = paste(tag,collapse=getOption("dwtools.tag.sep",";"))
   tagtext <- paste(unlist(strsplit(x = tag, split = getOption("dwtools.tag.sep",";"))), collapse=paste0(getOption("dwtools.tag.sep",";")," ")) # increase readability by turning ";" into "; "
   stopifnot(length(tag)==1)
-  timestamp_start <- devtools::with_options(c('digits.secs'=3),Sys.time())
+  timestamp_start <- Sys.time()
   if(!.timing && verbose > 0){
     cat(as.character(timestamp_start),": ",tagtext,"...\n",sep="")
     return(eval.parent(expr))
@@ -39,7 +39,7 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
   } else {
     l = system.time(r <- eval.parent(expr))
   }
-  x = setDT(as.list(l))[,list(timestamp = devtools::with_options(c('digits.secs'=3),Sys.time()), # timestamp_end
+  x = setDT(as.list(l))[,list(timestamp = Sys.time(), # timestamp_end
                               dwtools_session = getOption("dwtools.session"),
                               expr = paste(deparse(subx, width.cutoff=500L),collapse="\n"),
                               expr_crc32 = digest::digest(subx,algo="crc32"),
@@ -50,10 +50,15 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
                               elapsed = elapsed,
                               tag = tag),
                         verbose=FALSE] # suppress data.table verbose
-  if(!is.null(.timing.name) && !is.null(.timing.conn.name)) db(x, .timing.name, .timing.conn.name, timing=FALSE, verbose=0) # suppress single row of log messages display
-  else if(!is.null(r)){
-    if(!is.null(attr(r,"timing",TRUE))) x <- rbindlist(list(attr(r,"timing",TRUE),x)) # append timing attribute if exist
+  if(!is.null(.timing.name) && !is.null(.timing.conn.name)){
+    db(x, .timing.name, .timing.conn.name, .db.action="write", timing=FALSE, verbose=0) # suppress single row of log messages display
+  } else if(!is.null(r)){
+    if(isTRUE(getOption("dwtools.timing.append")) && !is.null(attr(r,"timing",TRUE))){
+      x <- rbindlist(list(attr(r,"timing",TRUE),x)) # append timing attribute if exist
+    }
     setattr(r, "timing", x)
+  } else{
+    warning("timing as result attribute not possible for NULL results of expression")
   }
   return(r)
 }

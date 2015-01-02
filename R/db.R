@@ -82,6 +82,7 @@ list.sub <- function(x, i, fill=NULL){
 #' @param .db.postprocess logical.
 #' @param .db.conns list of connections uniquely named.
 #' @param .db.dict data.table db interface dictionary.
+#' @param .db.action character action name, use only when no recycling required and action detection not required. Supported values: write, read, get, send. User should not use following option with any other value then `options("dwtools.tmp.db.action"=NULL)` as it will lose the timing if turned on.
 #' @param timing logical measure timing for vectorized usage, read \link{timing}, for scalar arguments it might be better to use \code{timing(db(...))}.
 #' @param verbose integer, if greater than 0 then print debugging messages.
 #' @details Function is designed to be slim and chainable in data.table \code{`[`} operator.
@@ -91,6 +92,7 @@ list.sub <- function(x, i, fill=NULL){
 #' \item \code{dbGetQuery} - \code{x} character with spaces and starts with \code{"SELECT "}: \code{db("SELECT col1 FROM my_tab1")}
 #' \item \code{dbSendQuery} - \code{x} character with spaces and \strong{not} starts with \code{"SELECT "}: \code{db("UPDATE my_tab1 SET col1 = NULL")}
 #' }
+#' @note In case of \emph{get} and \emph{send} actions any semicolon \emph{;} sign as the last char will be removed from query.
 #' @return In case of \strong{write / read / get} the data.table object (possibly with some extra attributes), in case of \strong{send} action the send query results.
 #' @section Multiple connections:
 #' Table names, sql commands, connection names can be character vectors. It allows processing into multiple connections and tables at once. The list of results will be returned, it will be named by the connection names, so if the connecion name was recycled (e.g. \code{db(c("my_tab1","my_tab2"))}) then there will be duplicated names in the resulted list.
@@ -117,174 +119,175 @@ db <- function(x, ..., key,
                .db.postprocess = getOption("dwtools.db.postprocess"),
                .db.conns = getOption("dwtools.db.conns"),
                .db.dict = getOption("dwtools.db.dict"),
+               .db.action = getOption("dwtools.tmp.db.action"),
                timing = getOption("dwtools.timing"),
                verbose = getOption("dwtools.verbose")){
   
-  ### validate inputs
+  ### single-batch indicator
   
-  if(missing(x)){
-    stop("x argument must be provided to db function")
-  } # stop on missing 'x'
-  if(is.null(.db.conns) || length(.db.conns)==0){
-    if(!getOption("dwtools.db.silent.drvName.csv",FALSE)) warning("You should define 'dwtools.db.conns' option to route db requests, `options('dwtools.db.conns'=list(source1=source1,source2=source2))`, read ?db examples. It will use csv connection now. You can suppress the warning by setting `options('dwtools.db.silent.drvName.csv'=TRUE)`")
-    .db.conns = list(csv1 = list(drvName = "csv"))
-  } # warning if connections not defined, set csv connection
-  if(is.list(.db.conns) && !is.list(.db.conns[[1]])){
-    stop("Correct 'dwtools.db.conns' option should be list of uniquely named lists, one for each connection, even if there is only one. Fix your connections definition, see examples.")
-  } # stop on incorrect 'dwtools.db.conns'
-  if(!is.character(x) && !is.data.table(x)){
-    stop("Argument 'x' should be single data.table or character (can be vector) sql statement or table name.")
-  } # stop when 'x' is not character or data.table
+  # Designed using options to achieve cleaner (deparsed expressions) and well readable logs. Use `timing=TRUE` to see effect.
   
-  ### catch name and conn.name, recycle conn.name, set defaults
+  ### validat input, catch dots, recycle, set defaults, skip for batch processing
   
-  dots = list(...) # magic ui decoder
+  if(is.null(.db.action) || !is.character(.db.action) || !(.db.action %in% c("write","read","get","send"))){
+    if(missing(x)){
+      stop("x argument must be provided to db function")
+    } # stop on missing 'x'
+    if(is.null(.db.conns) || length(.db.conns)==0){
+      if(!getOption("dwtools.db.silent.drvName.csv",FALSE)) warning("You should define 'dwtools.db.conns' option to route db requests, `options('dwtools.db.conns'=list(source1=source1,source2=source2))`, read ?db examples. It will use csv connection now. You can suppress the warning by setting `options('dwtools.db.silent.drvName.csv'=TRUE)`")
+      .db.conns = list(csv1 = list(drvName = "csv"))
+    } # warning if connections not defined, set csv connection
+    if(is.list(.db.conns) && !is.list(.db.conns[[1]])){
+      stop("Correct 'dwtools.db.conns' option should be list of uniquely named lists, one for each connection, even if there is only one. Fix your connections definition, see examples.")
+    } # stop on incorrect 'dwtools.db.conns'
+    if(!is.character(x) && !is.data.table(x)){
+      stop("Argument 'x' should be single data.table or character (can be vector) sql statement or table name.")
+    } # stop when 'x' is not character or data.table
+    
+    dots = list(...) # magic ui decoder
+    
+    ## recycle
+    # write:
+    # 1 DT save to 1 table in 1 conn
+    # 1 DT save to 1 table in X conns
+    # 1 DT save to X tables in X conns
+    # 1 DT save to X tables in 1 conn
+    # read:
+    # 1 table in 1 conn
+    # 1 table in X conns
+    # X tables in X conns
+    # X tables in 1 conn
+    # get/send:
+    # 1 sql in 1 conn
+    # 1 sql in X conns
+    # X sqls in X conns
+    # X tables in 1 conn
+    
+    name <- NULL
+    if(is.data.table(x)){
+      action = "write"
+      name = list.sub(x=dots,i=1,fill=NULL)
+      conn.name = list.sub(x=dots,i=2,fill=names(.db.conns[1]))
+      if(!is.null(name) && length(conn.name)==1 && length(name)>1) conn.name = rep(conn.name,length(name))
+      if(!is.null(name) && length(conn.name)>1 && length(name)==1) name = rep(name,length(conn.name))
+      if(is.null(name)) name = vector(mode="list",length(conn.name))
+    } # write
+    else if(is.character(x) && is.table.name(x)){
+      action = "read"
+      conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1]))
+      if(length(conn.name)==1 && length(x)>1) conn.name = rep(conn.name,length(x))
+      if(length(conn.name)>1 && length(x)==1) x = rep(x,length(conn.name))
+    } # read
+    else if(is.character(x) && is.sql(x) && is.sql.get(x)){
+      action = "get"
+      conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1]))
+      x <- vapply(x, function(x) if(substr(x,nchar(x),nchar(x))==";") x <- substr(x,1,nchar(x)-1) else x, "", USE.NAMES=FALSE)
+      if(length(conn.name)==1 && length(x)>1) conn.name = rep(conn.name,length(x))
+      if(length(conn.name)>1 && length(x)==1) x = rep(x,length(conn.name))
+    } # get
+    else if(is.character(x) && is.sql(x) && is.sql.send(x)){
+      action = "send"
+      conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1]))
+      x <- vapply(x, function(x) if(substr(x,nchar(x),nchar(x))==";") x <- substr(x,1,nchar(x)-1) else x, "", USE.NAMES=FALSE)
+      if(length(conn.name)==1 && length(x)>1) conn.name = rep(conn.name,length(x))
+      if(length(conn.name)>1 && length(x)==1) x = rep(x,length(conn.name))
+    } # send
+    else{
+      stop("Unsupported input, `db` expects `x` as data.table / character sql statement / character table name.")
+    } # else error 
+  }
   
-  if(is.data.table(x)){
-    action = "write"
-    name = list.sub(x=dots,i=1,fill=auto.table.name(names(x)))
-    conn.name = list.sub(x=dots,i=2,fill=names(.db.conns[1]))
-    sql = list(NULL)
-    visibility = expression(invisible(x[])) # closing function, write returns invisibly
-    if(length(conn.name)==1 && length(name)>1) conn.name = rep(conn.name,length(name))
-  } # write
-  else if(is.character(x) && is.table.name(x)){
-    action = "read"
-    name = x
-    conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1])) # 
-    sql = list(NULL)
-    visibility = expression(x[]) # closing function, get returns visibily
-    if(length(conn.name)==1 && length(name)>1) conn.name = rep(conn.name,length(name))
-  } # read
-  else if(is.character(x) && is.sql(x) && is.sql.get(x)){
-    action = "get"
-    name = list(NULL)
-    conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1]))
-    sql = x
-    visibility = expression(x[]) # closing function, query returns visibily
-    if(length(conn.name)==1 && length(sql)>1) conn.name = rep(conn.name,length(sql))
-  } # get
-  else if(is.character(x) && is.sql(x) && is.sql.send(x)){
-    action = "send"
-    name = list(NULL)
-    conn.name = list.sub(x=dots,i=1,fill=names(.db.conns[1]))
-    sql = x
-    visibility = expression(invisible(x)) # closing function, send returns visibily
-    if(length(conn.name)==1 && length(sql)>1) conn.name = rep(conn.name,length(sql))
-  } # send
-  else{
-    stop("Unsupported input, `db` expects `x` as data.table / character sql statement / character table name.")
-  } # else error 
+  ### batch processing
   
-  ### Define single execution
+  if(is.null(.db.action)){
+    pretty_log_on_timing <- function(i, x, name, conn.name, timing, verbose){
+      action <- getOption("dwtools.tmp.db.action")
+      if(action=="write" && is.null(name[[i]])) name[[i]] <- auto.table.name(names(x))
+      r <- eval(bquote(
+        switch(action,
+               write = invisible(timing(db(x,.(name[[i]]),.(conn.name[[i]])), nrow(x), tag=paste("db",action,name[[i]],conn.name[[i]],sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)),
+               read = timing(db(.(x[[i]]),.(conn.name[[i]])), NA_integer_, tag=paste("db",action,x[[i]],conn.name[[i]],sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)[],
+               get = timing(db(.(x[[i]]),.(conn.name[[i]])), NA_integer_, tag=paste("db",action,x[[i]],conn.name[[i]],sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)[],
+               send = invisible(timing(db(.(x[[i]]),.(conn.name[[i]])), NA_integer_, tag=paste("db",action,x[[i]],conn.name[[i]],sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)),
+               stop("not supported action, reset `options('dwtools.tmp.db.action'=NULL)` may help, read ?db"))
+      ))
+      if(timing && is.null(getOption("dwtools.timing.conn.name"))){ # suppress union of attr to handle outside of lapply, to do not double entries when setattr by reference
+        rtiming[[i]] <<- attr(r,"timing",TRUE)
+        setattr(r,"timing",NULL)
+      }
+      r
+    }
+    return({
+      if(timing && is.null(getOption("dwtools.timing.conn.name"))) rtiming <- vector(mode="list",length(conn.name))
+      r <- devtools::with_options( # using options it is possible to have cleaner tags in timing logs
+        new=c("dwtools.tmp.db.action"=action,"dwtools.timing"=FALSE,"dwtools.verbose"=verbose-1L,"dwtools.timing.append"=FALSE),
+        code=lapply(setNames(1:length(conn.name),conn.name), pretty_log_on_timing, x=x, name=name, conn.name=conn.name, timing=timing, verbose=verbose)
+      )
+      if(action=="write") r <- x
+      else if(length(r)==1){ # setkey only for scalar inputs
+        r <- r[[1]]
+        if(is.data.table(r) && !missing(key) && !is.null(key)){
+          if(is.numeric(key)) key <- names(x)[as.integer(key)] # support for column index instead of name
+          setkeyv(r,key)[]
+        }
+      }
+      if(timing && is.null(getOption("dwtools.timing.conn.name"))){ # union timing in attributes
+        setattr(r, "timing", rbindlist(rtiming))[]
+      }
+      if(action %in% c("write","send")) invisible(r) else r
+    })
+  }
+  
+  ### single processing
+  
+  ## already single execution
   # write: 1 DT save to 1 table in 1 conn
   # read: 1 table in 1 conn
   # get/send: 1 sql in 1 conn
   
-  db.one <- function(conn.name, sql, name, action, DT, .db.conns, .db.dict, verbose){
+  dots = list(...)
+  
+  # action
+  if(.db.action=="write"){ # write
+    name = list.sub(x=dots,i=1,fill=NULL)
+    conn.name = list.sub(x=dots,i=2,fill=NULL)
+    stopifnot(!is.null(name),!is.null(conn.name))
     .db.conn = .db.conns[[conn.name]]
-    msg <- paste0(as.character(Sys.time()),": db.one")
-    if(getOption("dwtools.db.one.debug",FALSE)) browser()
-    # action
-    if(action=="write"){ # write
-      if(verbose > 0) msg <- paste0(msg,"; write into db table ",name," in ",conn.name)
-      r = .db.dict[.(.db.conn$drvName), write[[1]](conn = .db.conn$conn, name = tablename[[1]](name), value = if(.db.preprocess) preprocess[[1]](DT) else DT)]
-      setattr(DT,"tablename",name)
-    } # write
-    else if(action=="read"){ # read
-      if(verbose > 0) msg <- paste0(msg,"; read from db table ",name," in ",conn.name)
-      DT = .db.dict[.(.db.conn$drvName), read[[1]](conn = .db.conn$conn, name = tablename[[1]](name))]
-      #DT = .db.dict[.(.db.conn$drvName), read[[1]]](conn = .db.conn$conn, name = name) # TODO name translation to c("schema","tbl") # TODO remove
-      if(is.data.frame(DT)){
-        setDT(DT)
-        if(.db.postprocess) DT = .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
-      }
-    } # read
-    else if(action=="get"){ # get
-      if(verbose > 0) msg <- paste0(msg,"; get from db statement@",conn.name,": ",sql)
-      DT = .db.dict[.(.db.conn$drvName), get[[1]]](conn = .db.conn$conn, statement = sql)
-      if(is.data.frame(DT)){
-        setDT(DT)
-        if(.db.postprocess) DT = .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
-      }
-    } # get
-    else if(action=="send"){ # send
-      if(verbose > 0) msg <- paste0(msg,"; send to db statement@",conn.name,": ",sql)
-      DT = .db.dict[.(.db.conn$drvName), send[[1]](conn = .db.conn$conn, statement = sql)] # here DT may not be a data.table but also a non-table send query results
-      if(is.data.frame(DT)){
-        setDT(DT)
-        if(.db.postprocess) DT = .db.dict[.(.db.conn$drvName), postprocess[[1]]](DT)
-      }
-      } # send
-    if(verbose > 0) cat(msg,"; processed ",action," in ",conn.name,"\n",sep="")
-    return(DT)
-  }
-  db.one.is.timing <- function(conn.name, sql, name, action, DT, .db.conns, .db.dict, .timing, verbose){
-    if(.timing==TRUE) return(eval(bquote(
-      timing(db.one(conn.name=.(conn.name), sql=.(sql), name=.(name), action=.(action), DT=DT, .db.conns=.db.conns, .db.dict=.db.dict, verbose=.(verbose)),
-             in.n = nrowDTlengthVec(DT),
-             .timing = .timing,
-             verbose = 0L) # TO DO reorganize timing and verbose
-    ))) # log argument values
-    db.one(conn.name=conn.name, sql=sql, name=name, action=action, DT=DT, .db.conns=.db.conns, .db.dict=.db.dict, verbose=verbose)
-  }
-  
-  ### Recycle inputs and execute
-  # write:
-  # 1 DT save to 1 table in 1 conn
-  # 1 DT save to 1 table in X conns
-  # 1 DT save to X tables in X conns
-  # 1 DT save to X tables in 1 conn
-  # read:
-  # 1 table in 1 conn
-  # 1 table in X conns
-  # X tables in X conns
-  # X tables in 1 conn
-  # get/send:
-  # 1 sql in 1 conn
-  # 1 sql in X conns
-  # X sqls in X conns
-  # X tables in 1 conn
-  
-  N = length(conn.name)
-  msg <- paste0(as.character(Sys.time()),": db")
-  if(N == 1){
-    if(length(sql)!=N) stop("Invalid sql statement length, sql statements length should be equal to 1 (to be recycled) or it should match to connection names length.") # TO DO test
-    if(length(name)!=N) stop("Invalid table names length, table names length should be equal to 1 (to be recycled) or it should match to connection names length.") # TO DO test
-    x = db.one.is.timing(conn.name=conn.name, sql=sql[[1]], name=name, action=action, DT=x, .db.conns=.db.conns, .db.dict=.db.dict, .timing=timing, verbose=verbose-1)
-    msg <- paste0(msg,"; processed ",action," in ",conn.name)
-    if(is.data.table(x) && !missing(key) && !is.null(key)){
-      if(is.numeric(key)) key <- names(x)[as.integer(key)] # support for column index instead of name
-      setkeyv(x,key)
-      msg <- paste0(msg,"; key on: ",paste(key,collapse=", "))
+    r = .db.dict[.(.db.conn$drvName), write[[1]](conn = .db.conn$conn, name = tablename[[1]](name), value = if(.db.preprocess) preprocess[[1]](x) else x)]
+    setattr(x,"tablename",name)
+  } # write
+  else if(.db.action=="read"){ # read
+    conn.name = list.sub(x=dots,i=1,fill=NULL)
+    stopifnot(!is.null(conn.name))
+    .db.conn = .db.conns[[conn.name]]
+    x = .db.dict[.(.db.conn$drvName), read[[1]](conn = .db.conn$conn, name = tablename[[1]](x))]
+    if(is.data.frame(x)){
+      setDT(x)
+      if(.db.postprocess) x = .db.dict[.(.db.conn$drvName), postprocess[[1]]](x)
     }
-  } # execute one, return DT or 'send' results
-  else if(N > 1){
-    if((length(sql)!=N && (action %in% c("get","send"))) || (length(name)!=N && (action %in% c("write","read")))){
-      msg <- paste0(msg,";recycling")
-      if(length(sql)!=N && (action %in% c("get","send"))){
-        if(length(sql)==1){
-          sql = rep(sql,N)
-          msg <- paste0(msg," sql statements")
-        }
-        else stop("Invalid sql statement length, sql statements length should be equal to 1 (to be recycled) or it should match to connection names length or .") # TODO test
-      }
-      if(length(name)!=N && (action %in% c("write","read"))){
-        if(length(name)==1){
-          name = rep(name,N)
-          msg <- paste0(msg," table name")
-        }
-        else stop("Invalid table names length, table names length should be equal to 1 (to be recycled) or it should match to connection names length.") # TODO test
-      }
-    } # recycling
-    x = mapply(FUN=db.one.is.timing, conn.name=conn.name, sql=sql, name=name, MoreArgs=list(action=action, DT=x, .db.conns=.db.conns, .db.dict=.db.dict, .timing=timing, verbose=verbose-1), SIMPLIFY=FALSE)
-    if(timing && is.null(getOption("dwtools.timing.conn.name"))) timingv(x)
-    msg <- paste0(msg,"; mapply db.one completed")
-  } # execute batch, recycle args, return list of DTs or 'send' results
+  } # read
+  else if(.db.action=="get"){ # get
+    conn.name = list.sub(x=dots,i=1,fill=NULL)
+    stopifnot(!is.null(conn.name))
+    .db.conn = .db.conns[[conn.name]]
+    x = .db.dict[.(.db.conn$drvName), get[[1]]](conn = .db.conn$conn, statement = x)
+    if(is.data.frame(x)){
+      setDT(x)
+      if(.db.postprocess) x = .db.dict[.(.db.conn$drvName), postprocess[[1]]](x)
+    }
+  } # get
+  else if(.db.action=="send"){ # send
+    conn.name = list.sub(x=dots,i=1,fill=NULL)
+    stopifnot(!is.null(conn.name))
+    .db.conn = .db.conns[[conn.name]]
+    x = .db.dict[.(.db.conn$drvName), send[[1]](conn = .db.conn$conn, statement = x)] # here x may not be a data.table but also a non-table send query results
+    if(is.data.frame(x)){
+      setDT(x)
+      if(.db.postprocess) x = .db.dict[.(.db.conn$drvName), postprocess[[1]]](x)
+    }
+  } # send
   
-  ### Return
-  if(verbose > 0) cat(msg,"\n",sep="")
-  return(eval(visibility)) # for "get" and "read" it returns including *print* `DT[]`, for "write" and "send" invisibly `invisible(DT)`
+  return(x)
 }
 
 # db migration --------------------------------------------------------

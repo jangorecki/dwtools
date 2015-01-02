@@ -9,7 +9,9 @@
 #' \item \link{build_hierarchy} transform single dataset to star schema, columns allocation based on cardinalities in unique groupings of each pair.
 #' \item \link{idxv} custom indices for in-memory processing.
 #' }
-#' @note All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
+#' @note
+#' All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.\cr
+#' The base option \emph{digits.secs} will be changed to 3 on package loading.
 #' @docType package
 #' @import data.table
 #' @name dwtools

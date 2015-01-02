@@ -1,6 +1,6 @@
 suppressPackageStartupMessages(library(data.table))
 library(dwtools)
-options("dwtools.verbose"=3L)  # turn on status messages printed to console
+options("dwtools.verbose"=1L)  # turn on status messages printed to console
 
 # Setup db connections --------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,
 
 # Basic usage --------------------------------------------------------------------
 
-(DT = dw.populate(scenario="fact")) # fact table
+(DT = dw.populate(1e5,scenario="fact")) # fact table
 
 ### write, aka INSERT + CREATE TABLE
 
@@ -78,11 +78,11 @@ db(c("DROP TABLE my_tab1","DROP TABLE my_tab2"),c("sqlite1","sqlite2")) # multip
 
 # Advanced usage ------------------------------------------------------
 
-options("dwtools.verbose"=3L)
+options("dwtools.verbose"=1L)
 db.conns.names = c("sqlite1","sqlite2","sqlite3")
 
 ### easy sql scripting: DROP ALL TABLES IN ALL DBs
-(DT = dw.populate(scenario="fact")) # fact table
+(DT = dw.populate(1e5,scenario="fact")) # fact table
 
 # populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite"), auto table names
 DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
@@ -107,7 +107,7 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 ### Chaining data.table: DT[...][...]
 
 # populate star schema to db
-X = dw.populate(scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
+X = dw.populate(1e5,scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
 db(X$TIME,"time") # save time to db
 db(X$GEOGRAPHY,"geography") # save geography to db
 db(X$SALES,"sales") # save sales FACT to db
@@ -129,18 +129,18 @@ db("geography",key="geog_code")[db("sales",key="geog_code")] # geography[sales]
 # 9. aggregate to higher time entity
 # 10. save current state of data to db
 jj_aggr = quote(list(amount=sum(amount), value=sum(value)))
-db("sales",key="geog_code" # read fact table from db
-   )[,eval(jj_aggr),keyby=c("geog_code","time_code") # aggr by geog_code and time_code
-     ][,db(.SD) # write to db, auto.table.name
-       ][,db("geography",key="geog_code" # read lookup geography dim from db
-             )[.SD # left join geography
-               ][,eval(jj_aggr), keyby=c("time_code","geog_region_name")] # aggr
-         ][,db(.SD) # write to db, auto.table.name
-           ][,db("time",key="time_code" # read lookup time dim from db
-                 )[.SD # left join time
-                   ][, eval(jj_aggr), keyby=c("geog_region_name","time_month_code","time_month_name")] # aggr
-             ][,db(.SD) # write to db, auto.table.name
-               ]
+r <- db("sales",key="geog_code" # read fact table from db
+        )[,eval(jj_aggr),keyby=c("geog_code","time_code") # aggr by geog_code and time_code
+          ][,db(.SD) # write to db, auto.table.name
+            ][,db("geography",key="geog_code" # read lookup geography dim from db
+                  )[.SD # left join geography
+                    ][,eval(jj_aggr), keyby=c("time_code","geog_region_name")] # aggr
+              ][,db(.SD) # write to db, auto.table.name
+                ][,db("time",key="time_code" # read lookup time dim from db
+                      )[.SD # left join time
+                        ][, eval(jj_aggr), keyby=c("geog_region_name","time_month_code","time_month_name")] # aggr
+                  ][,db(.SD) # write to db, auto.table.name
+                    ]
 db("SELECT name FROM sqlite_master WHERE type='table'")
 
 ## Interesting to consider is
@@ -159,6 +159,7 @@ dbCopy(
 
 # Disconnecting and cleaning workspace ------------------------------------------------------
 
+db.conns.names = c("sqlite1","sqlite2","sqlite3")
 sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) %in% db.conns.names],
        function(x) dbDisconnect(x[["conn"]])) # close SQLite connections
 sapply(getOption("dwtools.db.conns")[names(getOption("dwtools.db.conns")) %in% db.conns.names],

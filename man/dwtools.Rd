@@ -19,6 +19,7 @@ The core functions includes:
 }
 }
 \note{
-All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.
+All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.\cr
+The base option \emph{digits.secs} will be changed to 3 on package loading.
 }
 
