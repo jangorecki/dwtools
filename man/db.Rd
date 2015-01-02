@@ -115,7 +115,7 @@ options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2,sqlite3=sqlite3,
 
 # Basic usage --------------------------------------------------------------------
 
-(DT = dw.populate(1e4,scenario="fact")) # fact table
+(DT = dw.populate(1e5,scenario="fact")) # fact table
 
 ### write, aka INSERT + CREATE TABLE
 
@@ -163,7 +163,7 @@ options("dwtools.verbose"=1L)
 db.conns.names = c("sqlite1","sqlite2","sqlite3")
 
 ### easy sql scripting: DROP ALL TABLES IN ALL DBs
-(DT = dw.populate(1e4,scenario="fact")) # fact table
+(DT = dw.populate(1e5,scenario="fact")) # fact table
 
 # populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite"), auto table names
 DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
@@ -188,7 +188,7 @@ db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names)
 ### Chaining data.table: DT[...][...]
 
 # populate star schema to db
-X = dw.populate(1e4,scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
+X = dw.populate(1e5,scenario="star") # list of 5 tables, 1 fact table and 4 dimensions
 db(X$TIME,"time") # save time to db
 db(X$GEOGRAPHY,"geography") # save geography to db
 db(X$SALES,"sales") # save sales FACT to db
