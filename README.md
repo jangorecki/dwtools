@@ -1,6 +1,6 @@
 # dwtools
 
-**Current version: 0.8.1**  
+**Current version: 0.8.2**  
 
 Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization, normalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
@@ -179,6 +179,7 @@ DT[CJI(IDX,TRUE,323,"OR")]
 A brief summary of other functions in the package.  
 * `timing` - measure time, nrow in/out, optionally save to db
 * `as.xts.data.table` - wrapper method for conversion of data.table to xts and reverse
+* `data.equal.data.table` - check if two DT equal, ignore row/col order
 * `vwap` - aggregate tick trades data to OHLC including VWAP
 * `pkgsVersion` - handy wrapper to compare packages version across libraries
 * `anonymize` - anonymization by hashing sensitive data

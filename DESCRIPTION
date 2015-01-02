@@ -1,8 +1,8 @@
 Package: dwtools
 Type: Package
 Title: Data Warehouse related functions.
-Version: 0.8.1
-Date: 2015-01-01
+Version: 0.8.2
+Date: 2015-01-02
 Author: Jan Gorecki
 Maintainer: Jan Gorecki <J.Gorecki@wit.edu.plt>
 Depends:
@@ -23,6 +23,6 @@ Suggests:
 Description: Data Warehouse and data integration helpers. Database connector
     handle direct database drivers (DBI), odbc connection (RODBC), csv
     connection. Easy multiple simultaneous databases connections managing.
-    Denormalization of star schema and snowflake schema into flat table. Basic
+    denormalization of star schema and snowflake schema into flat table. Basic
     normalization. And some more.
 License: GPL-3

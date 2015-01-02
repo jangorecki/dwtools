@@ -1,8 +1,10 @@
-# dwtools 0.8.1
+# dwtools 0.8.2
 
 * shinyDW supports build hierarchy
 * build hierarchy
+* data.equal.data.table
 * anonymize
+* improved db timing
 
 # dwtools 0.8.0
 
