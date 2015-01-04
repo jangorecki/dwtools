@@ -33,5 +33,5 @@
 }
 
 .onAttach <- function(libname, pkgname){
-  packageStartupMessage("dwtools 0.8.1 dev version")
+  # packageStartupMessage("dwtools 0.8.2")
 }
