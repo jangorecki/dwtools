@@ -26,9 +26,7 @@ Populate sample DW data. By default \emph{star}, see \code{scenario} arg for oth
 The following case \code{scenario="denormalize"} will invoke lookup for full columns set in all the dimensions. On the real data it is advised to use \code{scenario="star"} and later denormalize using \link{joinbyv} function where you can provide subsets of columns on each lookup.
 }
 \examples{
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
+suppressPackageStartupMessages(library(dwtools))
 
 X = dw.populate() # scenario="star"
 lapply(X, head)

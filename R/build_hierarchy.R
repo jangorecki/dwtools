@@ -27,7 +27,7 @@ common_words <- function(x, split="_"){
 
 # build hierarchy -------------------------------------------------------
 
-#' @title build_hierarchy
+#' @title Build hierarchy
 #' @description Detect hierarchies in the dataset and normalize to star schema, optionally deploy new model to db.
 #' @param x data.table source dataset.
 #' @param factname character, default \emph{fact}.
@@ -113,20 +113,13 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
     dw[["tables"]][[factname]] <- copy(x[,.SD,.SDcols=-c(bycols[!(bycols %in% unique(fk))])])
     dw
   }, length(fk_dim_names)+1L, tag=paste("build_hierarchy","build tables",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
-  # union logs
-  if(timing && is.null(getOption("dwtools.timing.conn.name"))){
-    setattr(dw,"timing",rbindlist(list(attr(x,"timing",TRUE),
-                                       attr(mx,"timing",TRUE),
-                                       attr(dw,"timing",TRUE))))
-  }
   if(!deploy) return(dw)
   # drop existing tables
-  try(db(paste("DROP TABLE ",names(dw$tables)[length(dw$tables)]),db.conn.name), silent=TRUE)
-  try(db(paste("DROP TABLE ",names(dw$tables)[-length(dw$tables)]),db.conn.name), silent=TRUE)
+  try(db(paste("DROP TABLE ",names(dw$tables)[length(dw$tables)]),db.conn.name), silent=TRUE) # fact table first
+  try(db(paste("DROP TABLE ",names(dw$tables)[-length(dw$tables)]),db.conn.name), silent=TRUE) # dims in second step
   # create db with data
   ct <- tryCatch(invisible(sapply(names(dw$tables), function(table_name) db(dw[["tables"]][[table_name]],table_name,db.conn.name,timing=timing,verbose=verbose-1))),
                  error = function(e) stop(paste0("Error when write following tables: ",paste(names(dw$tables),collapse=","),". Error details: ",e$call,": ",e$message)))
-  # no FK - sqlite example, only warning, results no FK on db
   # SQLite does not support ALTER TABLE ADD CONSTRAINT, suppress warning
   fk <- if(getOption("dwtools.db.conns")[[db.conn.name]][["drvName"]]!="SQLite"){
     tryCatch(invisible(db(sql_relations(dw[["relations"]],names(dw$tables)[length(dw$tables)]),db.conn.name,timing=timing,verbose=verbose-1)),
@@ -135,11 +128,6 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
                NULL
              })
   } else NULL
-  if(timing && is.null(getOption("dwtools.timing.conn.name"))){
-    setattr(dw,"timing",rbindlist(list(attr(dw,"timing",TRUE),
-                                       rbindlist(lapply(ct,function(x) attr(x,"timing",TRUE))),
-                                       rbindlist(lapply(fk,function(x) attr(x,"timing",TRUE))))))
-  }
   return(dw)
 }
 

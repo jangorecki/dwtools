@@ -1,6 +1,4 @@
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
+suppressPackageStartupMessages(library(dwtools))
 
 sample.dt <- data.table(date = as.Date((Sys.Date()-999):Sys.Date(),origin="1970-01-01"),
                         quantity = sample(10:50,1000,TRUE),

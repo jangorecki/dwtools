@@ -7,14 +7,14 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
   .db.postprocess = getOption("dwtools.db.postprocess"),
   .db.conns = getOption("dwtools.db.conns"),
   .db.dict = getOption("dwtools.db.dict"),
-  .db.action = getOption("dwtools.tmp.db.action"),
+  .db.batch.action = getOption("dwtools.db.batch.action"),
   timing = getOption("dwtools.timing"),
   verbose = getOption("dwtools.verbose"))
 }
 \arguments{
 \item{x}{data.table (to save in db) or character of table names or character of sql commands.}
 
-\item{key}{character vector to be used to set key or integer columns position, cannot be mixed with multiple connections queries, see examples for chaining in DT syntax.}
+\item{key}{character or integer, character vector to be used to set key or integer columns position to setkey.}
 
 \item{.db.preprocess}{logical.}
 
@@ -24,22 +24,22 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
 
 \item{.db.dict}{data.table db interface dictionary.}
 
-\item{.db.action}{character action name, use only when no recycling required, no action detection required, no timing required. Supported values: \emph{write, read, get, send}.}
+\item{.db.batch.action}{character action name, use only when no recycling required, no action detection required, no timing required.}
 
-\item{timing}{logical measure timing for vectorized usage, read \link{timing}, for scalar arguments it might be better to use \code{timing(db(...))}.}
+\item{timing}{logical measure timing, make timings for each query in case of vectorized input, read \link{timing}.}
 
 \item{verbose}{integer, if greater than 0 then print debugging messages.}
 
 \item{\dots}{if \code{x} is data.table then \dots expects character table names and character connection names else \dots expects only character connection names.}
 }
 \value{
-In case of \strong{write / read / get} the data.table object (possibly with some extra attributes), in case of \strong{send} action the send query results.
+In case of \strong{write / read / get} the data.table object (possibly with some extra attributes). In case of \strong{send} action the send query results.
 }
 \description{
 Common db interface for DBI, RODBC and other custom defined off-memory storage. So far it was tested with SQLite, postgres and csv.
 }
 \details{
-Function is designed to be slim and chainable in data.table \code{`[`} operator.
+Function is designed to be slim and chainable in data.table \code{`[`} operator. It accept vectorized input for all combinations of character arguments, see \emph{Multiple tables/connections} section.
 \itemize{
 \item \code{dbWriteTable} - \code{x} is data.table: \code{db(DT,"my_tab")}
 \item \code{dbReadTable} - \code{x} character table name: \code{db("my_tab")}
@@ -48,17 +48,17 @@ Function is designed to be slim and chainable in data.table \code{`[`} operator.
 }
 }
 \note{
-In case of \emph{get} and \emph{send} actions any semicolon \emph{;} sign as the last char will be removed from query.
+In case of \emph{get} and \emph{send} actions any semicolon \emph{;} sign as the last char will be removed from query. When \emph{write} is used it will also set \emph{tablename} attribute by reference to a data.table which was written to database, because it is done by reference it will alter input data.table also and overwrite any previous \emph{tablename} attribute, you can always use \code{newDT <- db(copy(DT),NULL)} to keep both.
 }
-\section{Multiple connections}{
+\section{Multiple tables/connections}{
 
-Table names, sql commands, connection names can be character vectors. It allows processing into multiple connections and tables at once. The list of results will be returned, it will be named by the connection names, so if the connecion name was recycled (e.g. \code{db(c("my_tab1","my_tab2"))}) then there will be duplicated names in the resulted list.
+Table names, sql commands, connection names can be character vectors. It allows processing into multiple connections and tables at once. The list of results will be returned, except the \emph{write} action where single data.table will be always returned (for chaining). It will be named by the connection names, so if the connecion name was recycled (e.g. \code{db(c("my_tab1","my_tab2"))}) then there will be duplicated names in the resulted list.
 }
 
 \section{Limitations}{
 
 Table names must not contains spaces (which are accepted by some db vendors).\cr
-SQL send statements should contains spaces. E.g. sqlite \code{.tables} command will need to be written as \code{db("SELECT * FROM sqlite_master WHERE type='table'")}.\cr
+SQL send statements should contains spaces, e.g. sqlite \code{.tables} command needs to be written as \code{db("SELECT * FROM sqlite_master WHERE type='table'")}.\cr
 Below are the per driver name limitations:
 \itemize{
 \item \code{csv}: No \strong{get} and \strong{send} actions. Extension \emph{.csv} is automatically added to provided table name character (or to \link{auto.table.name} if table name was not provided).
@@ -67,21 +67,18 @@ Below are the per driver name limitations:
 
 \section{Auto table name}{
 
-If writing to db and table name is missing or NULL then the \link{auto.table.name} will be used. The table name used in \strong{write} will be provided as \code{"tablename"} attribute of the function result so it can be catched for later use.
+If writing to db and table name is missing or NULL then the \link{auto.table.name} will be used, auto generated tablename can be catched for later use by \code{(attr(DT,"tablename",TRUE)}, read note section.
 }
 
 \section{DB interface dictionary}{
 
-If you read/write to non-default schema you should use \code{"my_schema1.my_tab1"} table names, it will be translated to expected format for target db (e.g. for postgres: \code{c("my_schema1","my_tabl1")}).\cr
-SQL statements are not unified but most of the syntax is already common across different db.\cr
-There are preprocessing and postprocessing functions available per defined db driver. Those functions can be used for seemless integration in case if write/read to db lose classes of the data.\cr
-This gives R ability to act as data hub and gain value as ETL tool.\cr
-You can add new interfaces by extending \link{db_dict}. Pull Requests are welcome.
+If you read/write to non-default schema you should use \code{"my_schema1.my_tab1"} table names, it will be translated to expected format for target db, e.g. for postgres: \code{c("my_schema1","my_tabl1")}.\cr
+SQL statements are of course not unified but most of the syntax is already common across different db.\cr
+There are preprocessing and postprocessing functions available per defined db driver. Those functions can be used for seemless integration in case if write/read to db lose classes of the data. This gives R ability to act as data hub and gain value as ETL tool.\cr
+You can add new db interfaces by extending \link{db_dict}. Pull Requests are welcome.
 }
 \examples{
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
-options("dwtools.verbose"=1L)  # turn on status messages printed to console
+suppressPackageStartupMessages(library(dwtools))
 
 # Setup db connections --------------------------------------------------------------------
 
@@ -124,10 +121,10 @@ db(DT,"my_tab2","sqlite2") # WRITE to my_tab_alt to sqlite2 connection
 db(DT,"my_tab1","csv1") # WRITE to my_tab1.csv
 r1 = db(DT) # write to auto named table in default db connection (first in list)
 attr(r1,'tablename',TRUE) # auto generated table name # ?auto.table.name
-r2 = db(DT,NULL,"sqlite2") # the same above but another connection
+r2 = db(DT,NULL,"sqlite2") # the same above but another connection, override r1 attribute! read ?db note
 attr(r2,'tablename',TRUE)
 l = db(DT,c("my_tab11","my_tab22"),c("sqlite1","sqlite2")) # save into different connections and different tables
-sapply(l, function(x) attr(x,"tablename",TRUE))
+attr(l,'tablename',TRUE)
 
 ### read, aka: SELECT * FROM 
 
@@ -137,9 +134,9 @@ db("my_tab1","csv1") # READ from my_tab1.csv
 r1 = db("my_tab1","sqlite1",key=c("prod_code","cust_code","geog_code","time_code")) # set key on result, useful on chaining, see 'Chaining data.table' examples below
 key(r1)
 db(DT, "my_tab2") # CREATE TABLE just for below line example
-l = db("my_tab2", c("sqlite1","sqlite2")) # read my_tab2 table from two connections, return list, no `key` supported! #PR welcome
+l = db("my_tab2", c("sqlite1","sqlite2")) # read my_tab2 table from two connections, return list
 str(l)
-l = db(c("my_tab11","my_tab22"), c("sqlite1","sqlite2")) # read my_tab1 and my_tab2 table from two connections, return list, no `key`
+l = db(c("my_tab11","my_tab22"), c("sqlite1","sqlite2")) # read my_tab1 and my_tab2 table from two connections, return list
 str(l)
 
 ### get, aka: SELECT ... FROM ... JOIN ...
@@ -165,11 +162,11 @@ db.conns.names = c("sqlite1","sqlite2","sqlite3")
 ### easy sql scripting: DROP ALL TABLES IN ALL DBs
 (DT = dw.populate(1e5,scenario="fact")) # fact table
 
-# populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite"), auto table names
-DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
+# populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite3"), auto table names
+DT[,db(.SD,NULL,c("sqlite3","sqlite3"))]
 
-# populate 2 tables in each of connection, 6 tables created
-DT[,{db(.SD,NULL,db.conns.names); .SD}][,{db(.SD,NULL,db.conns.names); .SD}]
+# populate 2 tables in each connection, then 1 table in each connection, 9 tables created
+DT[,db(.SD,NULL,rep(db.conns.names,2))][,db(.SD,NULL,db.conns.names)]
 
 # query all tables on all connections
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names))
@@ -196,6 +193,7 @@ db(X$SALES,"sales") # save sales FACT to db
 # data.table join in R directly on external SQL database
 db("geography",key="geog_code")[db("sales",key="geog_code")] # geography[sales]
 
+options("dwtools.timing"=TRUE) # turn on db auditing
 ## Chaining including multiple read and multiple write directly on SQL database
 # 0. predefine aggregate function for later use
 # 1. query sales fact table from db
@@ -223,11 +221,12 @@ r <- db("sales",key="geog_code" # read fact table from db
                   ][,db(.SD) # write to db, auto.table.name
                     ]
 db("SELECT name FROM sqlite_master WHERE type='table'")
+get.timing()
 
 ## Interesting to consider is
 # how much effort would such 'query' requires if developing it in (leading commercial) ETL tools?
 # can the classic ETL tools even compete with data.table transformation performance, and DBI loading/writing performance?
-# free 'express' edition of ETL toos do have a row limit so cannot be well benchmarked.
+# free 'express' edition of ETL tools do have a processing row limit so cannot be well benchmarked.
 
 ### Copy tables
 
@@ -237,6 +236,9 @@ dbCopy(
   c("sales","geography","time"),"sqlite2"  # target
 )
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'","sqlite2")) # sqlite2 check
+get.timing()
+options("dwtools.timing"=FALSE)
+trunc.timing()
 
 # Disconnecting and cleaning workspace ------------------------------------------------------
 

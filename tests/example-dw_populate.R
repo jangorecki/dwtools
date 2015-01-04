@@ -1,6 +1,4 @@
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
+suppressPackageStartupMessages(library(dwtools))
 
 X = dw.populate() # scenario="star"
 lapply(X, head)

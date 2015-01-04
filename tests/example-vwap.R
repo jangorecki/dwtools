@@ -1,5 +1,4 @@
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
+suppressPackageStartupMessages(library(dwtools))
 
 # populate tick data
 suppressPackageStartupMessages(library(Rbitcoin))
@@ -12,7 +11,7 @@ print(DT)
 
 # same with timing
 DT = timing(vwap(tick, "30 mins"), nrow(tick))
-attr(DT,"timing")
+get.timing()
 
 # ohlc + vwap, aggregate using ceiling
 DT = vwap(tick, "30 mins", "ceiling")

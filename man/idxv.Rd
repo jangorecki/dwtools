@@ -19,9 +19,7 @@ list of data.table, including some meta data in attributes.
 Precalculate indices for data.table, also known as \emph{Nth key}.
 }
 \examples{
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
-options("dwtools.verbose"=3)  # turn on status messages printed to console
+suppressPackageStartupMessages(library(dwtools))
 
 DT = dw.populate(scenario="fact")
 setkeyv(DT,c("cust_code", "prod_code", "geog_code", "time_code", "curr_code"))

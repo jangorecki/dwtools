@@ -1,5 +1,4 @@
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
+suppressPackageStartupMessages(library(dwtools))
 
 pkgs <- c("dplyr","data.table","RSQLite","dwtools")
 pkgsVersion(pkgs)

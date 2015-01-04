@@ -22,8 +22,7 @@ Perform OHLC and VWAP on tick trades.
 Rows where \code{amount==0} (normally should not happened) should be filtered before passing the tick data to the function.
 }
 \examples{
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
+suppressPackageStartupMessages(library(dwtools))
 
 # populate tick data
 suppressPackageStartupMessages(library(Rbitcoin))
@@ -36,7 +35,7 @@ print(DT)
 
 # same with timing
 DT = timing(vwap(tick, "30 mins"), nrow(tick))
-attr(DT,"timing")
+get.timing()
 
 # ohlc + vwap, aggregate using ceiling
 DT = vwap(tick, "30 mins", "ceiling")

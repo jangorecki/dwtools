@@ -24,8 +24,7 @@ Test if data equal in two data.tables, can ignore order of rows or columns.
 Duplicate names in DTs were not tested. All attributes all ignored.
 }
 \examples{
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
+suppressPackageStartupMessages(library(dwtools))
 
 DT1 <- dw.populate(scenario="fact")
 DT2 <- copy(DT1)[sample(1:nrow(DT1),nrow(DT1),FALSE)]

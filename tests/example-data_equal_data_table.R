@@ -1,5 +1,4 @@
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
+suppressPackageStartupMessages(library(dwtools))
 
 DT1 <- dw.populate(scenario="fact")
 DT2 <- copy(DT1)[sample(1:nrow(DT1),nrow(DT1),FALSE)]

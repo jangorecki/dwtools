@@ -1,22 +1,32 @@
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
-options("dwtools.verbose"=3L, "dwtools.timing.verbose"=0L) # turn on status messages printed to console
+suppressPackageStartupMessages(library(dwtools))
 
 # populate DT
-DT = dw.populate(N=1e4, scenario="fact")
+DT = dw.populate(N=1e5, scenario="fact")
 
 # classic time measurement
 system.time(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")]
-  )
+)
 
-# timing as result attribute
+# timing to R session memory
+options("dwtools.timing.conn.name"=NULL) # default
 r = timing(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")],
   in.n = nrow(DT)
 )
 print(r)
-attr(r,"timing")
+get.timing() # trunc expression field
+get.timing(FALSE) # return full expression field
+get.timing(TRUE) # omit expr field
+
+# some more timing
+invisible(sapply(1:3/10, function(time) timing(Sys.sleep(time))))
+get.timing()
+# timing and keep parameters value instead of variable symbol
+invisible(sapply(3:1/10, function(time) eval(bquote(timing(Sys.sleep(.(time)))))))
+get.timing()
+trunc.timing() # clear in-memory timing logs
+get.timing()
 
 # timing to db
 library(RSQLite)
@@ -29,8 +39,7 @@ r = timing(
   DT[,lapply(.SD,sum),by=list(geog_code,time_code,curr_code),.SDcols=c("amount","value")],
   nrow(DT)
 )
-print(r)
-attr(r,"timing",TRUE)
+get.timing() # no in-memory logs
 db("dwtools_timing") # query timing log from db
 
 # timing db function, scalar
@@ -43,37 +52,18 @@ db("DROP TABLE sales")
 r = db(DT, c("sales","sales_20141211"),timing=TRUE) # insert DT to two tables, including timing
 db("dwtools_timing")
 
-## auto timing for supported functions:
-# db - any db calls,
-# build_hierarchy - normalization to star schema from single denormalized table,
-# dbCopy - batch tables migration
+# auto timing, supported functions: db, build_hierarchy, dbCopy
 options("dwtools.timing"=TRUE)
 r = db(DT, "sales")
 db("dwtools_timing")
-# for extended auto timing usage try now DT "chaining" example from ?db
 
-# vectorized result as attribute - still by auto timing option, again as attribute
+# timing logs to in-memory (still by auto timing option)
 options("dwtools.timing.conn.name"=NULL)
 r = db(DT, c("sales","sales_20141211")) # insert DT to two tables
-attr(r,"timing",TRUE) # already combined
-
-## verbose and timing
-
-# you should NOT use verbose for timing and verbose for its inner function at the same time as it will result a mess in verbose messages
-r = timing(db("sales", verbose=1L), nrow(DT), tag="query sales from db", verbose=1L)
-
-# for verbose on user processes use 'dwtools.timing.verbose' and 'tag' field
-options("dwtools.verbose"=0L, "dwtools.timing.verbose"=1L)
-r = timing(db("sales"), nrow(DT), tag="query sales from db")
-
-# for verbose of dwtools functions use 'dwtools.verbose'
-options("dwtools.verbose"=1L, "dwtools.timing.verbose"=0L)
-r = timing(db("sales"), nrow(DT), tag="query sales from db")
+get.timing()
 
 ## clean up
 
 dbDisconnect(sqlite1$conn)
 file.remove(sqlite1$dbname)
-options("dwtools.db.conns"=NULL) # reset dwtools.db.conns option
-options("dwtools.timing.conn.name"=NULL)
-options("dwtools.timing"=FALSE)
+options("dwtools.db.conns"=NULL,"dwtools.timing.conn.name"=NULL,"dwtools.timing"=FALSE)

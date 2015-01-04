@@ -14,8 +14,7 @@ pkgsVersion(pkgs, libs = .libPaths())
 Batch package version compare between libraries.
 }
 \examples{
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
+suppressPackageStartupMessages(library(dwtools))
 
 pkgs <- c("dplyr","data.table","RSQLite","dwtools")
 pkgsVersion(pkgs)

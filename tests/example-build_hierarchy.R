@@ -1,5 +1,4 @@
 suppressPackageStartupMessages(library(dwtools))
-options("dwtools.verbose"=3L)
 
 ## simple 2 dimension case
 
@@ -24,9 +23,9 @@ names(dw)
 # better timing, setup ?db connection to automatically store logs in db
 dw <- build_hierarchy(x,factname="fact_sales",timing=TRUE)
 # print timing expressions and the rest of log entry
-attr(dw,"timing")[,{cat(paste0("\n# ",tag,"\n",expr),"\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
+get.timing(FALSE,last=2L)[,{cat(paste0("\n# ",tag,"\n",expr),"\n",sep=""); .SD}][,.SD,.SDcols=-c("expr")]
 
-## shiny app to browse model, use following vars in Global Env:
+## shiny app to browse model, will use following vars in Global Env:
 # x - denormalized table
 # dw - normalization results
 if(interactive()) shiny::runApp(system.file("shinyDW", package="dwtools"))
@@ -38,11 +37,10 @@ sqlite1 = list(drvName="SQLite",dbname="sqlite1.db") # setup connection to db
 sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
 options("dwtools.db.conns"=list(sqlite1=sqlite1))
 x <- dw.populate(N=1e5, scenario="denormalize")
-dw <- build_hierarchy(x,factname="fact_sales",deploy=TRUE,db.conn.name="sqlite1",timing=TRUE,verbose=3L)
-db(c("fact_sales","dim_geog"))
-dbDisconnect(sqlite1[["conn"]])
-file.remove(sqlite1[["dbname"]])
-options("dwtools.db.conns"=NULL)
+dw <- build_hierarchy(x,factname="fact_sales",deploy=TRUE,db.conn.name="sqlite1",timing=TRUE,verbose=1L)
+get.timing()
+db(c("dim_geog","fact_sales"))
+dbDisconnect(sqlite1$conn); file.remove(sqlite1$dbname); options("dwtools.db.conns"=NULL); trunc.timing()
 
 ## different data quality use cases tests:
 

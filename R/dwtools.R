@@ -17,6 +17,9 @@
 #' @name dwtools
 NULL
 
+# dwtools cache, timing logs, etc.
+dwtools.cache <- new.env()
+
 # technical ---------------------------------------------------------------
 
 #' @title POSIXct
@@ -114,4 +117,14 @@ data.equal.data.table <- function(DT1, DT2, ignore_row_order=TRUE, ignore_col_or
   setkeyv(DT1,names(DT1))
   setkeyv(DT2,names(DT2))
   all(sapply(list(DT2[!DT1], DT1[!DT2]), function(x) nrow(x)==0L))
+}
+
+#' @title Fast check is vector unique
+#' @description Test if vector unique.
+#' @param x vector
+#' @export
+#' @example tests/example-is_unique.R
+is.unique <- function(x){
+  if(is.null(NULL)) return(TRUE)
+  identical(attr(data.table:::forderv(x, retGrp=TRUE),"maxgrpn",TRUE),1L)
 }

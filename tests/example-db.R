@@ -1,6 +1,4 @@
-suppressPackageStartupMessages(library(data.table))
-library(dwtools)
-options("dwtools.verbose"=1L)  # turn on status messages printed to console
+suppressPackageStartupMessages(library(dwtools))
 
 # Setup db connections --------------------------------------------------------------------
 
@@ -43,10 +41,10 @@ db(DT,"my_tab2","sqlite2") # WRITE to my_tab_alt to sqlite2 connection
 db(DT,"my_tab1","csv1") # WRITE to my_tab1.csv
 r1 = db(DT) # write to auto named table in default db connection (first in list)
 attr(r1,'tablename',TRUE) # auto generated table name # ?auto.table.name
-r2 = db(DT,NULL,"sqlite2") # the same above but another connection
+r2 = db(DT,NULL,"sqlite2") # the same above but another connection, override r1 attribute! read ?db note
 attr(r2,'tablename',TRUE)
 l = db(DT,c("my_tab11","my_tab22"),c("sqlite1","sqlite2")) # save into different connections and different tables
-sapply(l, function(x) attr(x,"tablename",TRUE))
+attr(l,'tablename',TRUE)
 
 ### read, aka: SELECT * FROM 
 
@@ -56,9 +54,9 @@ db("my_tab1","csv1") # READ from my_tab1.csv
 r1 = db("my_tab1","sqlite1",key=c("prod_code","cust_code","geog_code","time_code")) # set key on result, useful on chaining, see 'Chaining data.table' examples below
 key(r1)
 db(DT, "my_tab2") # CREATE TABLE just for below line example
-l = db("my_tab2", c("sqlite1","sqlite2")) # read my_tab2 table from two connections, return list, no `key` supported! #PR welcome
+l = db("my_tab2", c("sqlite1","sqlite2")) # read my_tab2 table from two connections, return list
 str(l)
-l = db(c("my_tab11","my_tab22"), c("sqlite1","sqlite2")) # read my_tab1 and my_tab2 table from two connections, return list, no `key`
+l = db(c("my_tab11","my_tab22"), c("sqlite1","sqlite2")) # read my_tab1 and my_tab2 table from two connections, return list
 str(l)
 
 ### get, aka: SELECT ... FROM ... JOIN ...
@@ -84,11 +82,11 @@ db.conns.names = c("sqlite1","sqlite2","sqlite3")
 ### easy sql scripting: DROP ALL TABLES IN ALL DBs
 (DT = dw.populate(1e5,scenario="fact")) # fact table
 
-# populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite"), auto table names
-DT[,db(.SD,NULL,"sqlite3")][,db(.SD,NULL,"sqlite3")]
+# populate 2 tables in sqlite3 while chaining: db(DT,NULL,"sqlite3"), auto table names
+DT[,db(.SD,NULL,c("sqlite3","sqlite3"))]
 
-# populate 2 tables in each of connection, 6 tables created
-DT[,{db(.SD,NULL,db.conns.names); .SD}][,{db(.SD,NULL,db.conns.names); .SD}]
+# populate 2 tables in each connection, then 1 table in each connection, 9 tables created
+DT[,db(.SD,NULL,rep(db.conns.names,2))][,db(.SD,NULL,db.conns.names)]
 
 # query all tables on all connections
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'",db.conns.names))
@@ -115,6 +113,7 @@ db(X$SALES,"sales") # save sales FACT to db
 # data.table join in R directly on external SQL database
 db("geography",key="geog_code")[db("sales",key="geog_code")] # geography[sales]
 
+options("dwtools.timing"=TRUE) # turn on db auditing
 ## Chaining including multiple read and multiple write directly on SQL database
 # 0. predefine aggregate function for later use
 # 1. query sales fact table from db
@@ -142,11 +141,12 @@ r <- db("sales",key="geog_code" # read fact table from db
                   ][,db(.SD) # write to db, auto.table.name
                     ]
 db("SELECT name FROM sqlite_master WHERE type='table'")
+get.timing()
 
 ## Interesting to consider is
 # how much effort would such 'query' requires if developing it in (leading commercial) ETL tools?
 # can the classic ETL tools even compete with data.table transformation performance, and DBI loading/writing performance?
-# free 'express' edition of ETL toos do have a row limit so cannot be well benchmarked.
+# free 'express' edition of ETL tools do have a processing row limit so cannot be well benchmarked.
 
 ### Copy tables
 
@@ -156,6 +156,9 @@ dbCopy(
   c("sales","geography","time"),"sqlite2"  # target
 )
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'","sqlite2")) # sqlite2 check
+get.timing()
+options("dwtools.timing"=FALSE)
+trunc.timing()
 
 # Disconnecting and cleaning workspace ------------------------------------------------------
 
