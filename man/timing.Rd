@@ -60,7 +60,7 @@ get.timing()
 # timing and keep parameters value instead of variable symbol
 invisible(sapply(3:1/10, function(time) eval(bquote(timing(Sys.sleep(.(time)))))))
 get.timing()
-trunc.timing() # clear in-memory timing logs
+purge.timing() # clear in-memory timing logs
 get.timing()
 
 # timing to db

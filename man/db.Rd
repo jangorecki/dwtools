@@ -238,7 +238,7 @@ dbCopy(
 (tbls = db("SELECT name FROM sqlite_master WHERE type='table'","sqlite2")) # sqlite2 check
 get.timing()
 options("dwtools.timing"=FALSE)
-trunc.timing()
+purge.timing()
 
 # Disconnecting and cleaning workspace ------------------------------------------------------
 

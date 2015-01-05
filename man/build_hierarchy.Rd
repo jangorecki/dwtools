@@ -81,7 +81,7 @@ x <- dw.populate(N=1e5, scenario="denormalize")
 dw <- build_hierarchy(x,factname="fact_sales",deploy=TRUE,db.conn.name="sqlite1",timing=TRUE,verbose=1L)
 get.timing()
 db(c("dim_geog","fact_sales"))
-dbDisconnect(sqlite1$conn); file.remove(sqlite1$dbname); options("dwtools.db.conns"=NULL); trunc.timing()
+dbDisconnect(sqlite1$conn); file.remove(sqlite1$dbname); options("dwtools.db.conns"=NULL); purge.timing()
 
 ## different data quality use cases tests:
 

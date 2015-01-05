@@ -14,6 +14,6 @@ get.timing(trunc_expr = 16L, last = FALSE)
 Get timing logs
 }
 \seealso{
-\link{trunc.timing}
+\link{timing}, \link{purge.timing}
 }
 

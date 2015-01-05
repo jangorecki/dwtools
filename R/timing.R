@@ -60,7 +60,7 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
 #' @title Get timing logs
 #' @param trunc_expr integer or logical, when \emph{integer} then cut \emph{expr} field after nchar, or when \emph{TRUE} remove \emph{expr} from result, when \emph{FALSE} include full \emph{expr}.
 #' @param last integer or logical, if \emph{FALSE} then full log returned, when \emph{TRUE} then only last log entry is returned, when integer then last n entries returned.
-#' @seealso \link{trunc.timing}
+#' @seealso \link{timing}, \link{purge.timing}
 #' @export
 get.timing <- function(trunc_expr = 16L, last=FALSE){
   # [ ] minor, consider add get.timing from db
@@ -98,8 +98,9 @@ add.timing <- function(x, .timing.name = getOption("dwtools.timing.name"), .timi
 }
 
 #' @title Truncate in-memory timing logs cache
-#' @export trunc.timing
-trunc.timing <- function(){
+#' @seealso \link{timing}
+#' @export
+purge.timing <- function(){
   assign("dwtools_timing", NULL, envir=dwtools.cache)
 }
 

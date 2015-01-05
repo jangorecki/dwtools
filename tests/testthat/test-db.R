@@ -106,7 +106,7 @@ test_that("dbCopy copy multiple tables and match", {
   options("dwtools.db.conns"=list(sqlite1=sqlite1,sqlite2=sqlite2))
   DT1 = dw.populate(1e3, scenario="fact")
   db(DT1,c("my_tab1","my_tab2"),"sqlite1")
-  trunc.timing()
+  purge.timing()
   dbCopy(c("my_tab1","my_tab2"),"sqlite1",c("some_tab1","some_tab2"),"sqlite2",timing=TRUE)
   DT23 <- db(c("some_tab1","some_tab2"),"sqlite2")
   dbDisconnect(sqlite1$conn); file.remove(sqlite1$dbname)

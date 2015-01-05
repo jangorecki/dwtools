@@ -2,14 +2,14 @@ context("timing tests")
 library(RSQLite)
 
 test_that("basic timing and timestamp precision", {
-  options("dwtools.timing.conn.name"=NULL); trunc.timing()
+  options("dwtools.timing.conn.name"=NULL); purge.timing()
   r <- timing(Sys.sleep(0.1))
   nch <- 19L + if(getOption("digits.secs") > 0) getOption("digits.secs") + 1L else 0
   expect_true(is.data.table(get.timing()) && nrow(get.timing())==1L && (get.timing()[,elapsed] %between% c(0.05,0.15)) && (nchar(as.character(get.timing()$timestamp))==nch), info="test basic timing and timestamp precision")
 })
 
 test_that("nested timing", {
-  options("dwtools.timing.conn.name"=NULL); trunc.timing()
+  options("dwtools.timing.conn.name"=NULL); purge.timing()
   f <- function(x){
     colclass <- sapply(x, class)
     r <- timing(x[,lapply(.SD,sum),by=c(names(x)[colclass!="numeric"]),.SDcols=c(names(x)[colclass=="numeric"])],
@@ -40,7 +40,7 @@ test_that("log timing to db and batch timing", {
 })
 
 test_that("auto timing option", {
-  options("dwtools.timing.conn.name"=NULL); trunc.timing(); options("dwtools.timing"=TRUE)
+  options("dwtools.timing.conn.name"=NULL); purge.timing(); options("dwtools.timing"=TRUE)
   sqlite1 = list(drvName="SQLite",dbname="sqlite1.db")
   sqlite1$conn = dbConnect(SQLite(), dbname=sqlite1$dbname)
   options("dwtools.db.conns"=list(sqlite1=sqlite1))
@@ -51,7 +51,7 @@ test_that("auto timing option", {
 })
 
 test_that("get.timing arguments", {
-  options("dwtools.timing.conn.name"=NULL); trunc.timing()
+  options("dwtools.timing.conn.name"=NULL); purge.timing()
   invisible(sapply(5:10/100, function(time) eval(bquote(timing(Sys.sleep(.(time)))))))
   expect_true(nrow(get.timing())==6L && nrow(get.timing(last=1L))==1L && nrow(get.timing(last=7L))==6L && ncol(get.timing(FALSE))==10L && ncol(get.timing(TRUE))==9L, info="test get.timing arguments")
 })
