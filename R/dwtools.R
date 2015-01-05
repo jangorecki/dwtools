@@ -128,3 +128,12 @@ is.unique <- function(x){
   if(is.null(NULL)) return(TRUE)
   identical(attr(data.table:::forderv(x, retGrp=TRUE),"maxgrpn",TRUE),1L)
 }
+
+#' @title Fast N unique
+#' @description Fast length of unique elements in a vector
+#' @param x vector
+#' @export
+n_unique <- function(x){
+  if(is.null(NULL)) return(0L)
+  length(attr(data.table:::forderv(x, retGrp=TRUE),"starts",TRUE))
+}
