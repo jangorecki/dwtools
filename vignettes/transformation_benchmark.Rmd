@@ -69,7 +69,7 @@ Would be glad to see the benchmark results on 1e9 rows table.
 # Benchmark configuration
 
 ```{r N}
-N = 1e5
+N = 1e3
 ```
 
 ## Database setup
@@ -89,7 +89,7 @@ Loading packages:
 pkgs <- c("dplyr","data.table","RSQLite","dwtools")
 if(("psql" %in% db_test) && !("RPostgreSQL" %in% pkgs)) pkgs <- c(pkgs,"RPostgreSQL")
 suppressPackageStartupMessages(sapply(pkgs, require, character.only=TRUE))
-pkgsVersion(pkgs, c(home = .libPaths()[1]))
+pkgsVersion(pkgs, c(ver = .libPaths()[1]))
 ```
 
 ```{r db_connect, echo=FALSE, results='hide'}
@@ -123,7 +123,7 @@ options("datatable.auto.index"=FALSE)
 Preview data
 ```{r preview, echo=FALSE}
 DT = dw.populate(N, S=1, scenario="fact")
-print(DT)
+knitr::kable(head(DT))
 ```
 
 ## write data
@@ -132,34 +132,36 @@ print(DT)
 DT = dw.populate(N, S=1, scenario="fact")
 
 if(file.exists("benchmark.csv")) file.remove("benchmark.csv")
-timing(write.table(DT,"benchmark.csv",sep=",",row.names=FALSE,quote=FALSE), N, paste("write","csv","base",sep=";"))
+timing(write.table(DT,"benchmark.csv",sep=",",row.names=FALSE,quote=FALSE), N, paste("write.table","write","csv","base",sep=";"))
 
 if(file.exists("benchmark.rds")) file.remove("benchmark.rds")
-timing(saveRDS(DT,"benchmark.rds"), N, paste("write","rds","base",sep=";"))
+timing(saveRDS(DT,"benchmark.rds"), N, paste("saveRDS","write","rds","base",sep=";"))
 
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test,timing=TRUE)
+Twrite <- get.timing(FALSE,last=2+length(db_test))[,list(expr,elapsed,tag)]
+knitr::kable(Twrite)
 ```
 
 ## read data
 
 ```{r read, echo=FALSE}
-if(file.exists("benchmark.csv")) file.remove("benchmark.csv")
+if(file.exists("benchmark.csv")) invisible(file.remove("benchmark.csv"))
 write.table(DT,"benchmark.csv",sep=",",row.names=FALSE,quote=FALSE)
 r1 = timing(fread("benchmark.csv")[,time_code:=as.Date(time_code)],
-            N, paste("read","csv","data.table",sep=";"))
+            N, paste("fread","read","csv","data.table",sep=";"))
 
-if(file.exists("benchmark.csv")) file.remove("benchmark.csv")
+if(file.exists("benchmark.csv")) invisible(file.remove("benchmark.csv"))
 write.table(DT,"benchmark.csv",sep=",",row.names=FALSE,quote=FALSE)
 r2 = timing(read.table("benchmark.csv",header=TRUE,sep=",",quote="",stringsAsFactors=FALSE,comment.char="",nrows=N,colClasses=unname(DT[,sapply(.SD,class)])),
-            N, paste("read","csv","base",sep=";"))
-stopifnot(data.equal.data.table(r1,setDT(r2))); rm(r2); file.remove("benchmark.csv")
+            N, paste("read.table","read","csv","base",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(r2))); rm(r2); invisible(file.remove("benchmark.csv"))
 
-if(file.exists("benchmark.rds")) file.remove("benchmark.rds")
+if(file.exists("benchmark.rds")) invisible(file.remove("benchmark.rds"))
 saveRDS(DT,"benchmark.rds")
 r3 = timing(readRDS("benchmark.rds"),
-            N, paste("read","rds","base",sep=";"))
-stopifnot(data.equal.data.table(r1,r3)); rm(r3); file.remove("benchmark.rds")
+            N, paste("readRDS","read","rds","base",sep=";"))
+stopifnot(data.equal.data.table(r1,r3)); rm(r3); invisible(file.remove("benchmark.rds"))
 
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
@@ -168,6 +170,8 @@ r = sapply(r4, function(r){
   stopifnot(data.equal.data.table(r1,r))
 })
 rm(r1, r4, r)
+Tread <- get.timing(FALSE,last=3+length(db_test))[,list(expr,elapsed,tag)]
+knitr::kable(Tread)
 ```
 
 ## create index
@@ -183,23 +187,25 @@ Idx = list(
   c(2,3)
 )
 Idx = lapply(Idx, function(idx) if(is.numeric(idx)) names(DT)[idx] else idx)
-Idx
+invisible(lapply(Idx, print))
 ```
 
 ```{r create_index, echo=FALSE}
 DT = dw.populate(N, S=1, scenario="fact")
-r = timing(idxv(DT, Idx),N,paste("create_index","indexN_where","dwtools",sep=";"))
+r = timing(idxv(DT, Idx),N,paste("idxv","create_index","indexN_where","dwtools",sep=";"))
 DT = dw.populate(N, S=1, scenario="fact")
-r = timing(idxv(DT, Idx, grp=TRUE),N,paste("create_index","indexN_group","dwtools",sep=";"))
+r = timing(idxv(DT, Idx, grp=TRUE),N,paste("idxv","create_index","indexN_group","dwtools",sep=";"))
 DT = dw.populate(N, S=1, scenario="fact")
-r = eval(bquote(timing(setkeyv(DT, .(Idx[[1]])),N,paste("create_index","index1_any","data.table",sep=";"))))
+r = eval(bquote(timing(setkeyv(DT, .(Idx[[1]])),N,paste("setkeyv","create_index","index1_any","data.table",sep=";"))))
 DT = dw.populate(N, S=1, scenario="fact")
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
 r = lapply(db_test, function(db_t){ # timing of 4 sqls at once per each db_test
-  eval(bquote(timing(db(create_index_sql,.(db_t)),NA_integer_,paste("create_index","indexN_any",db_t,sep=";"))))
+  eval(bquote(timing(db(create_index_sql,.(db_t)),NA_integer_,paste("db","create_index","indexN_any",db_t,sep=";"))))
 })
+Tcreate_index <- get.timing(FALSE,last=3+length(db_test))[,list(expr,elapsed,tag)]
+knitr::kable(Tcreate_index)
 ```
 
 ## select where
@@ -235,44 +241,54 @@ if(N==1e3){
   W[["2"]][["curr_code"]] <- c("GEL","SEK","XPM")
   W[["3"]][["prod_code"]] <- c(5728L,2090L,3591L) # 3rd filter
   W[["3"]][["geog_code"]] <- c("IA","AK","MS")
+} else if(N==1e7){
+  W[["1"]][["cust_code"]] <- c("id088","id025","id072") # 1st filter
+  W[["1"]][["prod_code"]] <- c(75932L,80108L,42139L)
+  W[["1"]][["geog_code"]] <- c("TX","WY","AK")
+  W[["2"]][["cust_code"]] <- c("id030","id017","id001") # 2nd filter
+  W[["2"]][["geog_code"]] <- c("WI","AZ","AR")
+  W[["2"]][["curr_code"]] <- c("CNY","HUF","KZT")
+  W[["3"]][["prod_code"]] <- c(27641L,22277L,66907L) # 3rd filter
+  W[["3"]][["geog_code"]] <- c("IN","VA","CT")
 } else {
   ## below queries can be helpful to find bigger samples for filtering
   # DT[,.N,by=c("cust_code","prod_code","geog_code")][order(-N)][1:6]
   # DT[,.N,by=c("cust_code","geog_code","curr_code")][order(-N)][1:6]
   # DT[,.N,by=c("prod_code","geog_code")][order(-N)][1:6]
-  stop("filtering samples were prepared for `N %in% c(1e3, 1e5, 1e6)`. You need to extend the section *where* to for valid filtering samples for the data, use S=1: `dw.populate(N, S=1, scenario='fact')`.")
+  stop("filtering samples were prepared for `N %in% c(1e3, 1e5, 1e6, 1e7)`. You need to extend the section *where* to for valid filtering samples for the data.")
 }
 
 # NON INDEX
 
 DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
 r1 = eval(bquote(timing(DF[DF$cust_code%in%.(W[["1"]][["cust_code"]]) & DF$prod_code%in%.(W[["1"]][["prod_code"]]) & DF$geog_code%in%.(W[["1"]][["geog_code"]]),],
-                        N, paste("where1","no_index","base",sep=";"))))
+                        N, paste("[.data.frame","where1","no_index","base",sep=";"))))
 r2 = eval(bquote(timing(DF[DF$cust_code%in%.(W[["2"]][["cust_code"]]) & DF$geog_code%in%.(W[["2"]][["geog_code"]]) & DF$curr_code%in%.(W[["2"]][["curr_code"]]),],
-                        N, paste("where2","no_index","base",sep=";"))))
+                        N, paste("[.data.frame","where2","no_index","base",sep=";"))))
 r3 = eval(bquote(timing(DF[DF$prod_code%in%.(W[["3"]][["prod_code"]]) & DF$geog_code%in%.(W[["3"]][["geog_code"]]),],
-                        N, paste("where3","no_index","base",sep=";"))))
+                        N, paste("[.data.frame","where3","no_index","base",sep=";"))))
+stopifnot(nrow(r1)>0L,nrow(r2)>0L,nrow(r3)>0L) # filters validation
 
 DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
 r0 = eval(bquote(timing(filter(DF, cust_code%in%.(W[["1"]][["cust_code"]]) & prod_code%in%.(W[["1"]][["prod_code"]]) & geog_code%in%.(W[["1"]][["geog_code"]])),
-                        N, paste("where1","no_index","dplyr",sep=";"))))
+                        N, paste("filter","where1","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r1),setDT(r0)))
 r0 = eval(bquote(timing(filter(DF, cust_code%in%.(W[["2"]][["cust_code"]]) & geog_code%in%.(W[["2"]][["geog_code"]]) & curr_code%in%.(W[["2"]][["curr_code"]])),
-                        N, paste("where2","no_index","dplyr",sep=";"))))
+                        N, paste("filter","where2","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r2),setDT(r0)))
 r0 = eval(bquote(timing(filter(DF, prod_code%in%.(W[["3"]][["prod_code"]]) & geog_code%in%.(W[["3"]][["geog_code"]])),
-                        N, paste("where3","no_index","dplyr",sep=";"))))
+                        N, paste("filter","where3","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r3),setDT(r0)))
 
 DT = dw.populate(N, S=1, scenario="fact")
 r0 = eval(bquote(timing(DT[cust_code%in%.(W[["1"]][["cust_code"]]) & prod_code%in%.(W[["1"]][["prod_code"]]) & geog_code%in%.(W[["1"]][["geog_code"]])],
-                        N, paste("where1","no_index","data.table",sep=";"))))
+                        N, paste("[.data.table","where1","no_index","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r1,r0))
 r0 = eval(bquote(timing(DT[cust_code%in%.(W[["2"]][["cust_code"]]) & geog_code%in%.(W[["2"]][["geog_code"]]) & curr_code%in%.(W[["2"]][["curr_code"]])],
-                        N, paste("where2","no_index","data.table",sep=";"))))
+                        N, paste("[.data.table","where2","no_index","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r2,r0))
 r0 = eval(bquote(timing(DT[prod_code%in%.(W[["3"]][["prod_code"]]) & geog_code%in%.(W[["3"]][["geog_code"]])],
-                        N, paste("where3","no_index","data.table",sep=";"))))
+                        N, paste("[.data.table","where3","no_index","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r3,r0))
 
 DT = dw.populate(N, S=1, scenario="fact")
@@ -285,36 +301,38 @@ select_sql <- c(
 )
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
-    r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),NA_integer_,paste(paste0("where",i),"db",db_t,sep=";"))))
+    r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),NA_integer_,paste("db",paste0("where",i),"db",db_t,sep=";"))))
     stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
     invisible()
   })
 })
+Twhere <- get.timing(FALSE,last=(3+length(db_test))*3)[,list(expr,elapsed,tag)]
+knitr::kable(Twhere)
 
 # INDEX
 
 DT = dw.populate(N, S=1, scenario="fact")
 setkeyv(DT, Idx[[1]])
 r0 = eval(bquote(timing(DT[CJ(.(W[["1"]][["cust_code"]]),.(W[["1"]][["prod_code"]]),.(W[["1"]][["geog_code"]])),nomatch=0L],
-                        N, paste("where1","index1_any","data.table",sep=";"))))
+                        N, paste("[.data.table","where1","index1_any","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r1,r0))
 r0 = eval(bquote(timing(DT[cust_code%in%.(W[["2"]][["cust_code"]]) & geog_code%in%.(W[["2"]][["geog_code"]]) & curr_code%in%.(W[["2"]][["curr_code"]])],
-                        N, paste("where2","index1_any","data.table",sep=";"))))
+                        N, paste("[.data.table","where2","index1_any","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r2,r0))
 r0 = eval(bquote(timing(DT[prod_code%in%.(W[["3"]][["prod_code"]]) & geog_code%in%.(W[["3"]][["geog_code"]])],
-                        N, paste("where3","index1_any","data.table",sep=";"))))
+                        N, paste("[.data.table","where3","index1_any","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r3,r0))
 
 DT = dw.populate(N, S=1, scenario="fact")
 IDX = idxv(DT, Idx)
 r0 = eval(bquote(timing(DT[CJI(IDX,.(W[["1"]][["cust_code"]]),.(W[["1"]][["prod_code"]]),.(W[["1"]][["geog_code"]]))],
-                        N, paste("where1","indexN_where","dwtools",sep=";"))))
+                        N, paste("[.data.table","where1","indexN_where","dwtools",sep=";"))))
 stopifnot(data.equal.data.table(r1,r0))
 r0 = eval(bquote(timing(DT[CJI(IDX,.(W[["2"]][["cust_code"]]),TRUE,.(W[["2"]][["geog_code"]]),TRUE,.(W[["2"]][["curr_code"]]))],
-                        N, paste("where2","indexN_where","dwtools",sep=";"))))
+                        N, paste("[.data.table","where2","indexN_where","dwtools",sep=";"))))
 stopifnot(data.equal.data.table(r2,r0))
 r0 = eval(bquote(timing(DT[CJI(IDX,TRUE,.(W[["3"]][["prod_code"]]),.(W[["3"]][["geog_code"]]))],
-                        N, paste("where3","indexN_where","dwtools",sep=";"))))
+                        N, paste("[.data.table","where3","indexN_where","dwtools",sep=";"))))
 stopifnot(data.equal.data.table(r3,r0))
 
 rm(IDX,r0)
@@ -334,13 +352,16 @@ select_sql <- c(
 )
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
-    r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),NA_integer_,paste(paste0("where",i),"indexN",db_t,sep=";"))))
+    r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),NA_integer_,paste("db",paste0("where",i),"indexN",db_t,sep=";"))))
     stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
     invisible()
   })
 })
 
 rm(r1,r2,r3,r)
+
+Twhere_index <- get.timing(FALSE,last=(2+length(db_test))*3)[,list(expr,elapsed,tag)]
+knitr::kable(Twhere_index)
 ```
 
 ## group by
@@ -408,7 +429,7 @@ r3 = eval(bquote(timing(aggregate(amount+value ~ prod_code+geog_code, data=DF, F
 ## cross join
 
 Cross joins are performed on smaller datasets to give a result of nrow equal to N.
-```{r crossjoin, eval=FALSE}
+```{r crossjoin, echo=FALSE, eval=FALSE}
 # taken from optiRum package
 CJ.dt = function(X,Y) {
   stopifnot(is.data.table(X),is.data.table(Y))
