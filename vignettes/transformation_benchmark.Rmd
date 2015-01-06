@@ -212,7 +212,7 @@ knitr::kable(Tcreate_index)
 
 ```{r where, echo=FALSE}
 DT = dw.populate(N, S=1, scenario="fact")
-# filter sample - valid for dw.populate(S=1) and N in 1e3, 1e5, 1e6:
+# filter sample - valid for dw.populate(S=1) and N in 1e3, 1e5, 1e6, 1e7:
 W <- list()
 if(N==1e3){
   W[["1"]][["cust_code"]] <- c("id048","id004","id088")
