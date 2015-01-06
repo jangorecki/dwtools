@@ -350,23 +350,23 @@ rm(r1,r2,r3,r)
 # NON INDEX
 
 DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
-r1 = eval(bquote(timing(DF[DF$cust_code & DF$prod_code & DF$geog_code,],
+r1 = eval(bquote(timing(aggregate(amount+value ~ cust_code+prod_code+geog_code, data=DF, FUN=sum),
                         N, paste("group1","no_index","base",sep=";"))))
-r2 = eval(bquote(timing(DF[DF$cust_code%in%.(W[["2"]][["cust_code"]]) & DF$geog_code%in%.(W[["2"]][["geog_code"]]) & DF$curr_code%in%.(W[["2"]][["curr_code"]]),],
+r2 = eval(bquote(timing(aggregate(amount+value ~ cust_code+geog_code+curr_code, data=DF, FUN=sum),
                         N, paste("where2","no_index","base",sep=";"))))
-r3 = eval(bquote(timing(DF[DF$prod_code%in%.(W[["3"]][["prod_code"]]) & DF$geog_code%in%.(W[["3"]][["geog_code"]]),],
+r3 = eval(bquote(timing(aggregate(amount+value ~ prod_code+geog_code, data=DF, FUN=sum),
                         N, paste("where3","no_index","base",sep=";"))))
 
-DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
-r0 = eval(bquote(timing(filter(DF, cust_code%in%.(W[["1"]][["cust_code"]]) & prod_code%in%.(W[["1"]][["prod_code"]]) & geog_code%in%.(W[["1"]][["geog_code"]])),
-                        N, paste("where1","no_index","dplyr",sep=";"))))
-stopifnot(data.equal.data.table(setDT(r1),setDT(r0)))
-r0 = eval(bquote(timing(filter(DF, cust_code%in%.(W[["2"]][["cust_code"]]) & geog_code%in%.(W[["2"]][["geog_code"]]) & curr_code%in%.(W[["2"]][["curr_code"]])),
-                        N, paste("where2","no_index","dplyr",sep=";"))))
-stopifnot(data.equal.data.table(setDT(r2),setDT(r0)))
-r0 = eval(bquote(timing(filter(DF, prod_code%in%.(W[["3"]][["prod_code"]]) & geog_code%in%.(W[["3"]][["geog_code"]])),
-                        N, paste("where3","no_index","dplyr",sep=";"))))
-stopifnot(data.equal.data.table(setDT(r3),setDT(r0)))
+# DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
+# r0 = eval(bquote(timing(filter(DF, cust_code%in%.(W[["1"]][["cust_code"]]) & prod_code%in%.(W[["1"]][["prod_code"]]) & geog_code%in%.(W[["1"]][["geog_code"]])),
+#                         N, paste("where1","no_index","dplyr",sep=";"))))
+# stopifnot(data.equal.data.table(setDT(r1),setDT(r0)))
+# r0 = eval(bquote(timing(filter(DF, cust_code%in%.(W[["2"]][["cust_code"]]) & geog_code%in%.(W[["2"]][["geog_code"]]) & curr_code%in%.(W[["2"]][["curr_code"]])),
+#                         N, paste("where2","no_index","dplyr",sep=";"))))
+# stopifnot(data.equal.data.table(setDT(r2),setDT(r0)))
+# r0 = eval(bquote(timing(filter(DF, prod_code%in%.(W[["3"]][["prod_code"]]) & geog_code%in%.(W[["3"]][["geog_code"]])),
+#                         N, paste("where3","no_index","dplyr",sep=";"))))
+# stopifnot(data.equal.data.table(setDT(r3),setDT(r0)))
 
 # TO DO data.table and db
 
@@ -374,29 +374,29 @@ stopifnot(data.equal.data.table(setDT(r3),setDT(r0)))
 # INDEX
 
 
-IDX = timing(idxv(DT, Idx, grp=TRUE), length(Idx), "dwtools;index-grp;create")
-jj = quote(list(amount=sum(amount),value=sum(value)))
-for(i in 1:length(IDX)){
-  idx_cols <- names(IDX[[i]])[!(names(IDX[[i]]) %like% "__dwtools_")]
-  eval(bquote(timing(
-    DT[,.(jj),by=.(idx_cols)],
-    nrow(DT),
-    paste("data.table;groupby;index",i,sep=";")
-  )))
-  eval(bquote(timing(
-    DT[,`__dwtools_grp` := IDX[[.(i)]][,`__dwtools_grp`]
-       ][,.(jj),keyby="__dwtools_grp"
-         ][attr(IDX[[.(i)]],"grp",TRUE)
-           ][,`__dwtools_grp`:=NULL][
-             ],
-    nrow(DT),
-    paste("dwtools;groupby;index",i,sep=";")
-  )))
-}
-
-sql <- c("SELECT cust_code, prod_code, geog_code, SUM(amount) AS amount, SUM(value) AS value FROM db GROUP BY cust_code, prod_code, geog_code",
-         "SELECT cust_code, geog_code, SUM(amount) AS amount, SUM(value) AS value FROM db GROUP BY cust_code, geog_code",
-         "SELECT prod_code, geog_code, SUM(amount) AS amount, SUM(value) AS value FROM db GROUP BY prod_code, geog_code")
+# IDX = timing(idxv(DT, Idx, grp=TRUE), length(Idx), "dwtools;index-grp;create")
+# jj = quote(list(amount=sum(amount),value=sum(value)))
+# for(i in 1:length(IDX)){
+#   idx_cols <- names(IDX[[i]])[!(names(IDX[[i]]) %like% "__dwtools_")]
+#   eval(bquote(timing(
+#     DT[,.(jj),by=.(idx_cols)],
+#     nrow(DT),
+#     paste("data.table;groupby;index",i,sep=";")
+#   )))
+#   eval(bquote(timing(
+#     DT[,`__dwtools_grp` := IDX[[.(i)]][,`__dwtools_grp`]
+#        ][,.(jj),keyby="__dwtools_grp"
+#          ][attr(IDX[[.(i)]],"grp",TRUE)
+#            ][,`__dwtools_grp`:=NULL][
+#              ],
+#     nrow(DT),
+#     paste("dwtools;groupby;index",i,sep=";")
+#   )))
+# }
+# 
+# sql <- c("SELECT cust_code, prod_code, geog_code, SUM(amount) AS amount, SUM(value) AS value FROM db GROUP BY cust_code, prod_code, geog_code",
+#          "SELECT cust_code, geog_code, SUM(amount) AS amount, SUM(value) AS value FROM db GROUP BY cust_code, geog_code",
+#          "SELECT prod_code, geog_code, SUM(amount) AS amount, SUM(value) AS value FROM db GROUP BY prod_code, geog_code")
 ```
 
 ## partition by
