@@ -1,6 +1,28 @@
 datatable.timing <- new.env()
 datatable.timing$timing <- NULL
 
+#' @title data.table query with timing
+#' @description Read \code{?data.table:::`[.data.table`} for data.table query manual. 
+#' @param x data.table
+#' @param i
+#' @param j
+#' @param by
+#' @param keyby
+#' @param with
+#' @param nomatch
+#' @param mult
+#' @param roll
+#' @param rollends
+#' @param which
+#' @param .SDcols
+#' @param verbose
+#' @param allow.cartesian
+#' @param drop
+#' @param rolltolast
+#' @return Result from data.table, as side effect timing logs in \emph{datatable.timing} environment, accessible by \link{dtt}.
+#' @seealso \link{dtt}
+#' @export
+#' @example tests/example-dtt.R
 "[.data.table" <- function(x, i, j, by, keyby, with = TRUE, nomatch = getOption("datatable.nomatch"), 
                            mult = "all", roll = FALSE, rollends = if (roll == "nearest") c(TRUE, TRUE) else if (roll >= 0) c(FALSE, TRUE) else c(TRUE, FALSE), which = FALSE, .SDcols, verbose = getOption("datatable.verbose"), 
                            allow.cartesian = getOption("datatable.allow.cartesian"), 
@@ -32,7 +54,7 @@ as.dt.call <- function(x){
 dtt <- function(unchain=TRUE, arg.names=TRUE, purge=FALSE){
   if(purge){
     datatable.timing$timing <- NULL
-    return(data.table())
+    return(invisible(data.table()))
   }
   dt <- rbindlist(datatable.timing$timing)
   N <- nrow(dt)
