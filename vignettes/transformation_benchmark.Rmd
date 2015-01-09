@@ -139,7 +139,6 @@ system.time(
       timing(Sys.sleep(0.0001))
   })
 )
-#kable(get.timing()[c(1L,length(elapsed))])
 purge.timing()
 options("dwtools.timing.nano"=TRUE) # will leave it on
 ```
@@ -556,6 +555,7 @@ cat(R.version$platform,"\n",sep="")
 
 ```{r benchmark_timings, echo=FALSE}
 # query benchmark results only from current session
+saveRDS(get.timing(FALSE),paste0("benchmark_",N,"_",as.integer(Sys.time()),".rds")) # store logs for easier merging multiple N timings
 kable(get.timing(80L, last=15))
 ```
 
@@ -572,7 +572,7 @@ kable(get.timing(80L, last=15))
 
 In terms of quality code refence there are few interested topics:
 
-* [data-table-vs-dplyr-can-one-do-something-well-the-other-cant-or-does-poorly](http://stackoverflow.com/questions/21435339/data-table-vs-dplyr-can-one-do-something-well-the-other-cant-or-does-poorly)
+* [data table vs dplyr can one do something well the other cant or does poorly](http://stackoverflow.com/questions/21435339/data-table-vs-dplyr-can-one-do-something-well-the-other-cant-or-does-poorly)
  
 Also one of the bests way to learn can be from the courses of authors of the tools:
 
