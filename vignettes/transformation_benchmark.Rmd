@@ -241,51 +241,51 @@ kable(Tcreate_index)
 DT = dw.populate(N, S=1, scenario="fact")
 # filter sample - valid for dw.populate(S=1) and N in 1e3, 1e5, 1e6, 1e7:
 whereList <- function(N){
-  W <- list()
-  if(N==1e3){
-  W[["1"]][["cust_code"]] <- c("id048","id004","id088")
-  W[["1"]][["prod_code"]] <- c(4L,4L,2L)
-  W[["1"]][["geog_code"]] <- c("RI","NV","MN")
-  W[["2"]][["cust_code"]] <- c("id079","id044","id044")
-  W[["2"]][["geog_code"]] <- c("NJ","HI","NH")
-  W[["2"]][["curr_code"]] <- c("JPY","IRR","KRW")
-  W[["3"]][["prod_code"]] <- c(5L,5L,2L)
-  W[["3"]][["geog_code"]] <- c("NV","NE","SC")
-} else if(N==1e5){
-  W[["1"]][["cust_code"]] <- c("id028","id015","id081")
-  W[["1"]][["prod_code"]] <- c(922L,232L,550L)
-  W[["1"]][["geog_code"]] <- c("IN","NM","DE")
-  W[["2"]][["cust_code"]] <- c("id012","id087","id006")
-  W[["2"]][["geog_code"]] <- c("OH","NH","UT")
-  W[["2"]][["curr_code"]] <- c("HRK","LTL","NOK")
-  W[["3"]][["prod_code"]] <- c(140L,852L,276L)
-  W[["3"]][["geog_code"]] <- c("VA","CO","MN")
-} else if(N==1e6){
-  W[["1"]][["cust_code"]] <- c("id088","id012","id073") # 1st filter
-  W[["1"]][["prod_code"]] <- c(1402L,2707L,4461L)
-  W[["1"]][["geog_code"]] <- c("RI","CO","NC")
-  W[["2"]][["cust_code"]] <- c("id015","id008","id082") # 2nd filter
-  W[["2"]][["geog_code"]] <- c("TX","SD","MS")
-  W[["2"]][["curr_code"]] <- c("GEL","SEK","XPM")
-  W[["3"]][["prod_code"]] <- c(5728L,2090L,3591L) # 3rd filter
-  W[["3"]][["geog_code"]] <- c("IA","AK","MS")
-} else if(N==1e7){
-  W[["1"]][["cust_code"]] <- c("id088","id025","id072") # 1st filter
-  W[["1"]][["prod_code"]] <- c(75932L,80108L,42139L)
-  W[["1"]][["geog_code"]] <- c("TX","WY","AK")
-  W[["2"]][["cust_code"]] <- c("id030","id017","id001") # 2nd filter
-  W[["2"]][["geog_code"]] <- c("WI","AZ","AR")
-  W[["2"]][["curr_code"]] <- c("CNY","HUF","KZT")
-  W[["3"]][["prod_code"]] <- c(27641L,22277L,66907L) # 3rd filter
-  W[["3"]][["geog_code"]] <- c("IN","VA","CT")
-} else {
-  ## below queries can be helpful to find bigger samples for filtering
-  # DT[,.N,by=c("cust_code","prod_code","geog_code")][order(-N)][1:6]
-  # DT[,.N,by=c("cust_code","geog_code","curr_code")][order(-N)][1:6]
-  # DT[,.N,by=c("prod_code","geog_code")][order(-N)][1:6]
-  stop("filtering samples were prepared for `N %in% c(1e3, 1e5, 1e6, 1e7)`. You need to extend the section *where* to for valid filtering samples for the data.")
-}
-W
+    W <- list()
+    if(N==1e3){
+    W[["1"]][["cust_code"]] <- c("id048","id004","id088")
+    W[["1"]][["prod_code"]] <- c(4L,4L,2L)
+    W[["1"]][["geog_code"]] <- c("RI","NV","MN")
+    W[["2"]][["cust_code"]] <- c("id079","id044","id044")
+    W[["2"]][["geog_code"]] <- c("NJ","HI","NH")
+    W[["2"]][["curr_code"]] <- c("JPY","IRR","KRW")
+    W[["3"]][["prod_code"]] <- c(5L,5L,2L)
+    W[["3"]][["geog_code"]] <- c("NV","NE","SC")
+  } else if(N==1e5){
+    W[["1"]][["cust_code"]] <- c("id028","id015","id081")
+    W[["1"]][["prod_code"]] <- c(922L,232L,550L)
+    W[["1"]][["geog_code"]] <- c("IN","NM","DE")
+    W[["2"]][["cust_code"]] <- c("id012","id087","id006")
+    W[["2"]][["geog_code"]] <- c("OH","NH","UT")
+    W[["2"]][["curr_code"]] <- c("HRK","LTL","NOK")
+    W[["3"]][["prod_code"]] <- c(140L,852L,276L)
+    W[["3"]][["geog_code"]] <- c("VA","CO","MN")
+  } else if(N==1e6){
+    W[["1"]][["cust_code"]] <- c("id088","id012","id073") # 1st filter
+    W[["1"]][["prod_code"]] <- c(1402L,2707L,4461L)
+    W[["1"]][["geog_code"]] <- c("RI","CO","NC")
+    W[["2"]][["cust_code"]] <- c("id015","id008","id082") # 2nd filter
+    W[["2"]][["geog_code"]] <- c("TX","SD","MS")
+    W[["2"]][["curr_code"]] <- c("GEL","SEK","XPM")
+    W[["3"]][["prod_code"]] <- c(5728L,2090L,3591L) # 3rd filter
+    W[["3"]][["geog_code"]] <- c("IA","AK","MS")
+  } else if(N==1e7){
+    W[["1"]][["cust_code"]] <- c("id088","id025","id072") # 1st filter
+    W[["1"]][["prod_code"]] <- c(75932L,80108L,42139L)
+    W[["1"]][["geog_code"]] <- c("TX","WY","AK")
+    W[["2"]][["cust_code"]] <- c("id030","id017","id001") # 2nd filter
+    W[["2"]][["geog_code"]] <- c("WI","AZ","AR")
+    W[["2"]][["curr_code"]] <- c("CNY","HUF","KZT")
+    W[["3"]][["prod_code"]] <- c(27641L,22277L,66907L) # 3rd filter
+    W[["3"]][["geog_code"]] <- c("IN","VA","CT")
+  } else {
+    ## below queries can be helpful to find bigger samples for filtering
+    # DT[,.N,by=c("cust_code","prod_code","geog_code")][order(-N)][1:6]
+    # DT[,.N,by=c("cust_code","geog_code","curr_code")][order(-N)][1:6]
+    # DT[,.N,by=c("prod_code","geog_code")][order(-N)][1:6]
+    stop("filtering samples were prepared for `N %in% c(1e3, 1e5, 1e6, 1e7)`. You need to extend the section *where* to for valid filtering samples for the data.")
+  }
+  W
 }
 W <- whereList(N=N)
 
@@ -413,13 +413,13 @@ r3 = eval(bquote(timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("prod
                         N, paste("aggregate","group3","no_index","base",sep=";"))))
 
 DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
-r0 = eval(bquote(timing(DF %>% select(cust_code, prod_code, geog_code, amount, value) %>% group_by(cust_code, prod_code, geog_code) %>% summarise_each(funs(sum)),
+r0 = eval(bquote(timing(DF %>% group_by(cust_code, prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
                         N, paste("select-group_by-summarise_each","group1","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r1),setDT(as.data.frame(r0))))
-r0 = eval(bquote(timing(DF %>% select(cust_code, geog_code, curr_code, amount, value) %>% group_by(cust_code, geog_code, curr_code) %>% summarise_each(funs(sum)),
+r0 = eval(bquote(timing(DF %>% group_by(cust_code, geog_code, curr_code) %>% summarise_each(funs(sum), amount,value),
                         N, paste("select-group_by-summarise_each","group2","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
-r0 = eval(bquote(timing(DF %>% select(prod_code, geog_code, amount, value) %>% group_by(prod_code, geog_code) %>% summarise_each(funs(sum)),
+r0 = eval(bquote(timing(DF %>% group_by(prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
                         N, paste("select-group_by-summarise_each","group3","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r3),setDT(as.data.frame(r0))))
 
