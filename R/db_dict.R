@@ -41,7 +41,7 @@ db_dict <- function(){
       function(conn, statement) stop("not possible to `send` to csv", call.=FALSE)
     ),
     tablename = list(
-      function(x) x,
+      function(x){ r = strsplit(x,".",TRUE)[[1]]; if(length(r) > 2) stop("Table name should contain at most one dot for schema.table mapping, in case of SQLite schema will be removed") else r[length(r)] },
       function(x){ r = strsplit(x,".",TRUE)[[1]]; if(length(r) > 2) stop("Table name should contain at most one dot for schema.table mapping") else r },
       function(x) x,
       function(x) x,
