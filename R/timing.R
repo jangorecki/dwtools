@@ -35,10 +35,26 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
   subx = substitute(expr)
   if(verbose > 0){
     cat(as.character(timestamp_start),": ",tagtext," took... ",sep="") 
-    l = system.time(r <- eval.parent(expr))
-    cat(l["user.self"]+l["sys.self"]," sec\n",sep="")
+    if(isTRUE(getOption("dwtools.timing.nano")) && requireNamespace("microbenchmark")){
+      nano <- microbenchmark::get_nanotime()
+      r <- eval.parent(expr)
+      l = c("user.self"=NA_real_,
+            "sys.self"=NA_real_,
+            "elapsed"=(microbenchmark::get_nanotime() - nano)*1e-9)
+    } else{
+      l = system.time(r <- eval.parent(expr))
+    }
+    cat(l["elapsed"]," sec\n",sep="")
   } else {
-    l = system.time(r <- eval.parent(expr))
+    if(isTRUE(getOption("dwtools.timing.nano")) && requireNamespace("microbenchmark")){
+      nano <- microbenchmark::get_nanotime()
+      r <- eval.parent(expr)
+      l = c("user.self"=NA_real_,
+            "sys.self"=NA_real_,
+            "elapsed"=(microbenchmark::get_nanotime() - nano)*1e-9)
+    } else {
+      l = system.time(r <- eval.parent(expr))
+    }
   }
   x = setDT(as.list(l))[,list(timestamp = Sys.time(), # timestamp_end
                               dwtools_session = getOption("dwtools.session"),
