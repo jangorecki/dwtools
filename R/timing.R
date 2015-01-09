@@ -36,6 +36,7 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
   if(verbose > 0){
     cat(as.character(timestamp_start),": ",tagtext," took... ",sep="") 
     if(isTRUE(getOption("dwtools.timing.nano")) && requireNamespace("microbenchmark")){
+      invisible(gc(FALSE))
       nano <- microbenchmark::get_nanotime()
       r <- eval.parent(expr)
       l = c("user.self"=NA_real_,
@@ -47,6 +48,7 @@ timing <- function(expr, in.n = NA_integer_, tag = NA_character_,
     cat(l["elapsed"]," sec\n",sep="")
   } else {
     if(isTRUE(getOption("dwtools.timing.nano")) && requireNamespace("microbenchmark")){
+      invisible(gc(FALSE))
       nano <- microbenchmark::get_nanotime()
       r <- eval.parent(expr)
       l = c("user.self"=NA_real_,
