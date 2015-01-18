@@ -22,8 +22,10 @@ options(scipen=100)
 
 ## Scope of the benchmark
 
-Benchmark scenarios will include (*SQL names used*):
+Benchmark scenarios will include (_SQL names used_):
 
+* WRITE (_create table as select_)
+* READ (_select \*_)
 * SELECT WHERE
 * GROUP BY
 * PARTITION BY
@@ -82,7 +84,7 @@ PR must be runable from within R + packages, any external dependency tool must b
 # Benchmark configuration
 
 ```{r N}
-N = 1e5
+N = 1e3
 ```
 
 ## Database setup
@@ -135,9 +137,10 @@ options("datatable.auto.index"=FALSE)
 
 ## Preview data
 
-```{r preview, echo=FALSE}
-DT = dw.populate(N, S=1, scenario="fact")
-kable(head(DT))
+```{r populate, echo=FALSE}
+X = dw.populate(N, S=1, scenario="star", setkey=FALSE)
+X = X[names(X) %in% c("SALES","PRODUCT")]
+kable(head(X$SALES))
 ```
 
 # Benchmark
@@ -161,8 +164,8 @@ plot_timing <- function(x){
 
 # filter sample - valid for dw.populate(S=1) and N in 1e3, 1e5, 1e6, 1e7:
 whereList <- function(N){
-    W <- list()
-    if(N==1e3){
+  W <- list()
+  if(N==1e3){
     W[["1"]][["cust_code"]] <- c("id048","id004","id088")
     W[["1"]][["prod_code"]] <- c(4L,4L,2L)
     W[["1"]][["geog_code"]] <- c("RI","NV","MN")
@@ -171,7 +174,8 @@ whereList <- function(N){
     W[["2"]][["curr_code"]] <- c("JPY","IRR","KRW")
     W[["3"]][["prod_code"]] <- c(5L,5L,2L)
     W[["3"]][["geog_code"]] <- c("NV","NE","SC")
-  } else if(N==1e5){
+  }
+  else if(N==1e5){
     W[["1"]][["cust_code"]] <- c("id028","id015","id081")
     W[["1"]][["prod_code"]] <- c(922L,232L,550L)
     W[["1"]][["geog_code"]] <- c("IN","NM","DE")
@@ -180,7 +184,8 @@ whereList <- function(N){
     W[["2"]][["curr_code"]] <- c("HRK","LTL","NOK")
     W[["3"]][["prod_code"]] <- c(140L,852L,276L)
     W[["3"]][["geog_code"]] <- c("VA","CO","MN")
-  } else if(N==1e6){
+  }
+  else if(N==1e6){
     W[["1"]][["cust_code"]] <- c("id088","id012","id073") # 1st filter
     W[["1"]][["prod_code"]] <- c(1402L,2707L,4461L)
     W[["1"]][["geog_code"]] <- c("RI","CO","NC")
@@ -189,7 +194,8 @@ whereList <- function(N){
     W[["2"]][["curr_code"]] <- c("GEL","SEK","XPM")
     W[["3"]][["prod_code"]] <- c(5728L,2090L,3591L) # 3rd filter
     W[["3"]][["geog_code"]] <- c("IA","AK","MS")
-  } else if(N==1e7){
+  }
+  else if(N==1e7){
     W[["1"]][["cust_code"]] <- c("id088","id025","id072") # 1st filter
     W[["1"]][["prod_code"]] <- c(75932L,80108L,42139L)
     W[["1"]][["geog_code"]] <- c("TX","WY","AK")
@@ -198,7 +204,8 @@ whereList <- function(N){
     W[["2"]][["curr_code"]] <- c("CNY","HUF","KZT")
     W[["3"]][["prod_code"]] <- c(27641L,22277L,66907L) # 3rd filter
     W[["3"]][["geog_code"]] <- c("IN","VA","CT")
-  } else {
+  }
+  else {
     ## below queries can be helpful to find bigger samples for filtering
     # DT[,.N,by=c("cust_code","prod_code","geog_code")][order(-N)][1:6]
     # DT[,.N,by=c("cust_code","geog_code","curr_code")][order(-N)][1:6]
@@ -210,14 +217,8 @@ whereList <- function(N){
 ```
 
 ```{r define_index, echo=FALSE}
-DT = dw.populate(0,scenario="fact") # 0 nrow DT template to catch names
-# Define indices
-Idx = list(
-  1:3,
-  c(1,3,5),
-  c(2,3)
-)
-Idx = lapply(Idx, function(idx) if(is.numeric(idx)) names(DT)[idx] else idx)
+Idx = list(c("cust_code", "prod_code", "geog_code"), c("cust_code", 
+"geog_code", "curr_code"), c("prod_code", "geog_code"))
 ```
 
 Each of below tests can be re-run separately
@@ -225,7 +226,7 @@ Each of below tests can be re-run separately
 ## write data
 
 ```{r write, echo=FALSE}
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 
 if(file.exists("benchmark.csv")) invisible(file.remove("benchmark.csv"))
 r0 = timing(write.table(DT,"benchmark.csv",sep=",",row.names=FALSE,quote=FALSE), N, paste("write.table","write","csv","base",sep=";"))
@@ -290,11 +291,11 @@ invisible(lapply(Idx, print))
 `data.table` solution use only single key set during the tests, this has to reflect support for concurency access to same data.table.
 
 ```{r create_index, echo=FALSE}
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 r = timing(idxv(DT, Idx[1L]),N,paste("idxv","create_index1","index","dwtools",sep=";"))
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 r = timing(setkeyv(DT, Idx[[1L]]),N,paste("setkeyv","create_index1","index","data.table",sep=";"))
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 create_index_sql <- sapply(Idx[1L], function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
@@ -303,9 +304,9 @@ r = lapply(db_test, function(db_t){ # timing of 4 sqls at once per each db_test
 })
 idx1_n <- 2+length(db_test)
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 r = timing(idxv(DT, Idx),N,paste("idxv","create_indexN","index","dwtools",sep=";"))
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
@@ -330,7 +331,7 @@ W <- whereList(N=N)
 
 # NON INDEX
 
-DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
+DF = as.data.frame(copy(X$SALES))
 r1 = eval(bquote(timing(DF[DF$cust_code%in%.(W[["1"]][["cust_code"]]) & DF$prod_code%in%.(W[["1"]][["prod_code"]]) & DF$geog_code%in%.(W[["1"]][["geog_code"]]),],
                         N, paste("[.data.frame","where1","no_index","base",sep=";"))))
 r2 = eval(bquote(timing(DF[DF$cust_code%in%.(W[["2"]][["cust_code"]]) & DF$geog_code%in%.(W[["2"]][["geog_code"]]) & DF$curr_code%in%.(W[["2"]][["curr_code"]]),],
@@ -339,7 +340,7 @@ r3 = eval(bquote(timing(DF[DF$prod_code%in%.(W[["3"]][["prod_code"]]) & DF$geog_
                         N, paste("[.data.frame","where3","no_index","base",sep=";"))))
 stopifnot(nrow(r1)>0L,nrow(r2)>0L,nrow(r3)>0L) # filters validation
 
-DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
+DF = as.data.frame(copy(X$SALES))
 r0 = eval(bquote(timing(filter(DF, cust_code%in%.(W[["1"]][["cust_code"]]) & prod_code%in%.(W[["1"]][["prod_code"]]) & geog_code%in%.(W[["1"]][["geog_code"]])),
                         N, paste("filter","where1","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r1),setDT(r0)))
@@ -350,7 +351,7 @@ r0 = eval(bquote(timing(filter(DF, prod_code%in%.(W[["3"]][["prod_code"]]) & geo
                         N, paste("filter","where3","no_index","dplyr",sep=";"))))
 stopifnot(data.equal.data.table(setDT(r3),setDT(r0)))
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 r0 = eval(bquote(timing(DT[cust_code%in%.(W[["1"]][["cust_code"]]) & prod_code%in%.(W[["1"]][["prod_code"]]) & geog_code%in%.(W[["1"]][["geog_code"]])],
                         N, paste("[.data.table","where1","no_index","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r1,r0))
@@ -361,7 +362,7 @@ r0 = eval(bquote(timing(DT[prod_code%in%.(W[["3"]][["prod_code"]]) & geog_code%i
                         N, paste("[.data.table","where3","no_index","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r3,r0))
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 select_sql <- c(
@@ -377,17 +378,16 @@ r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   })
 })
 non_idx_n <- 3 * 3 + length(db_test)*length(select_sql)
-  
 
 # INDEX
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 setkeyv(DT, Idx[[1]])
 r0 = eval(bquote(timing(DT[CJ(.(W[["1"]][["cust_code"]]),.(W[["1"]][["prod_code"]]),.(W[["1"]][["geog_code"]])),nomatch=0L],
                         N, paste("[.data.table","where1","index","data.table",sep=";"))))
 stopifnot(data.equal.data.table(r1,r0))
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 IDX = idxv(DT, Idx)
 r0 = eval(bquote(timing(DT[CJI(IDX,.(W[["1"]][["cust_code"]]),.(W[["1"]][["prod_code"]]),.(W[["1"]][["geog_code"]]))],
                         N, paste("[.data.table","where1","index","dwtools",sep=";"))))
@@ -401,7 +401,7 @@ stopifnot(data.equal.data.table(r3,r0))
 
 rm(IDX,r0)
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
@@ -441,37 +441,37 @@ W <- whereList(N=N)
 
 # NON INDEX
 
-DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
-r1 = eval(bquote(timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","prod_code","geog_code")]), FUN=sum),
-                        N, paste("aggregate","group1","no_index","base",sep=";"))))
-r2 = eval(bquote(timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","geog_code","curr_code")]), FUN=sum),
-                        N, paste("aggregate","group2","no_index","base",sep=";"))))
-r3 = eval(bquote(timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("prod_code","geog_code")]), FUN=sum),
-                        N, paste("aggregate","group3","no_index","base",sep=";"))))
+DF = as.data.frame(copy(X$SALES))
+r1 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","prod_code","geog_code")]), FUN=sum),
+            N, paste("aggregate","group1","no_index","base",sep=";"))
+r2 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","geog_code","curr_code")]), FUN=sum),
+            N, paste("aggregate","group2","no_index","base",sep=";"))
+r3 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("prod_code","geog_code")]), FUN=sum),
+            N, paste("aggregate","group3","no_index","base",sep=";"))
 
-DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
-r0 = eval(bquote(timing(DF %>% group_by(cust_code, prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
-                        N, paste("select-group_by-summarise_each","group1","no_index","dplyr",sep=";"))))
+DF = as.data.frame(copy(X$SALES))
+r0 = timing(DF %>% group_by(cust_code, prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
+            N, paste("select-group_by-summarise_each","group1","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r1),setDT(as.data.frame(r0))))
-r0 = eval(bquote(timing(DF %>% group_by(cust_code, geog_code, curr_code) %>% summarise_each(funs(sum), amount,value),
-                        N, paste("select-group_by-summarise_each","group2","no_index","dplyr",sep=";"))))
+r0 = timing(DF %>% group_by(cust_code, geog_code, curr_code) %>% summarise_each(funs(sum), amount,value),
+            N, paste("select-group_by-summarise_each","group2","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
-r0 = eval(bquote(timing(DF %>% group_by(prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
-                        N, paste("select-group_by-summarise_each","group3","no_index","dplyr",sep=";"))))
+r0 = timing(DF %>% group_by(prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
+            N, paste("select-group_by-summarise_each","group3","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r3),setDT(as.data.frame(r0))))
 
-DT = dw.populate(N, S=1, scenario="fact")
-r0 = eval(bquote(timing(DT[,lapply(.SD,sum), by=c("cust_code","prod_code","geog_code"), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","group1","no_index","data.table",sep=";"))))
+DT = copy(X$SALES)
+r0 = timing(DT[,lapply(.SD,sum), by=c("cust_code","prod_code","geog_code"), .SDcols=c("amount","value")],
+            N, paste("[.data.table","group1","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0))
-r0 = eval(bquote(timing(DT[,lapply(.SD,sum), by=c("cust_code","geog_code","curr_code"), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","group2","no_index","data.table",sep=";"))))
+r0 = timing(DT[,lapply(.SD,sum), by=c("cust_code","geog_code","curr_code"), .SDcols=c("amount","value")],
+            N, paste("[.data.table","group2","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r2,r0))
-r0 = eval(bquote(timing(DT[,lapply(.SD,sum), by=c("prod_code","geog_code"), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","group3","no_index","data.table",sep=";"))))
+r0 = timing(DT[,lapply(.SD,sum), by=c("prod_code","geog_code"), .SDcols=c("amount","value")],
+            N, paste("[.data.table","group3","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r3,r0))
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 select_sql <- c(
@@ -482,7 +482,9 @@ select_sql <- c(
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("group",i),"no_index",db_t,sep=";"))))
-    stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
+    rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
+    # if(!(data.equal.data.table(rr,r0))) browser() # TO DO n=1e6 failed
+    stopifnot(data.equal.data.table(rr,r0))
     invisible()
   })
 })
@@ -490,14 +492,14 @@ non_idx_n <- 3*3 + length(db_test)*length(select_sql)
 
 # INDEX
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 setkeyv(DT, Idx[[1]])
-r0 = eval(bquote(timing(DT[,lapply(.SD, sum), by = .(names(W[["1"]])), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","group1","index","data.table",sep=";"))))
+r0 = timing(DT[,lapply(.SD, sum), by=c("cust_code", "prod_code", "geog_code"), .SDcols=c("amount","value")],
+            N, paste("[.data.table","group1","index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0))
 rm(r0)
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
@@ -536,29 +538,29 @@ W <- whereList(N=N)
 
 # NON INDEX
 
-DT = dw.populate(N, S=1, scenario="fact")
-r1 = eval(bquote(timing(DT[,c("grp_amount","grp_value") := lapply(.SD,sum), by=.(names(W[[1]])), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","partition_aggr1","no_index","data.table",sep=";"))))
-DT = dw.populate(N, S=1, scenario="fact")
-r2 = eval(bquote(timing(DT[,c("grp_amount","grp_value") := lapply(.SD,sum), by=.(names(W[[2]])), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","partition_aggr2","no_index","data.table",sep=";"))))
-DT = dw.populate(N, S=1, scenario="fact")
-r3 = eval(bquote(timing(DT[,c("grp_amount","grp_value") := lapply(.SD,sum), by=.(names(W[[3]])), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","partition_aggr3","no_index","data.table",sep=";"))))
+DT = copy(X$SALES)
+r1 = timing(DT[,c("grp_amount","grp_value") := lapply(.SD,sum), by=list(cust_code,prod_code,geog_code), .SDcols=c("amount","value")],
+            N, paste("[.data.table","partition_aggr1","no_index","data.table",sep=";"))
+DT = copy(X$SALES)
+r2 = timing(DT[,c("grp_amount","grp_value") := lapply(.SD,sum), by=list(cust_code,geog_code,curr_code), .SDcols=c("amount","value")],
+            N, paste("[.data.table","partition_aggr2","no_index","data.table",sep=";"))
+DT = copy(X$SALES)
+r3 = timing(DT[,c("grp_amount","grp_value") := lapply(.SD,sum), by=list(prod_code,geog_code), .SDcols=c("amount","value")],
+            N, paste("[.data.table","partition_aggr3","no_index","data.table",sep=";"))
 
-DF = as.data.frame(dw.populate(N, S=1, scenario="fact"))
-r0 = eval(bquote(timing(DF %>% group_by(cust_code, prod_code, geog_code) %>% mutate_each(funs(sum), grp_amount=amount,grp_value=value),
-                        N, paste("select-group_by-mutate_each","partition_aggr1","no_index","dplyr",sep=";"))))
+DF = as.data.frame(copy(X$SALES))
+r0 = timing(DF %>% group_by(cust_code, prod_code, geog_code) %>% mutate_each(funs(sum), grp_amount=amount,grp_value=value),
+            N, paste("select-group_by-mutate_each","partition_aggr1","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r1),setDT(as.data.frame(r0))))
-r0 = eval(bquote(timing(DF %>% group_by(cust_code, geog_code, curr_code) %>% mutate_each(funs(sum), grp_amount=amount,grp_value=value),
-                        N, paste("select-group_by-mutate_each","partition_aggr2","no_index","dplyr",sep=";"))))
+r0 = timing(DF %>% group_by(cust_code, geog_code, curr_code) %>% mutate_each(funs(sum), grp_amount=amount,grp_value=value),
+            N, paste("select-group_by-mutate_each","partition_aggr2","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
-r0 = eval(bquote(timing(DF %>% group_by(prod_code, geog_code) %>% mutate_each(funs(sum), rp_amount=amount,grp_value=value),
-                        N, paste("select-group_by-mutate_each","partition_aggr3","no_index","dplyr",sep=";"))))
+r0 = timing(DF %>% group_by(prod_code, geog_code) %>% mutate_each(funs(sum), rp_amount=amount,grp_value=value),
+            N, paste("select-group_by-mutate_each","partition_aggr3","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r3),setDT(as.data.frame(r0))))
 rm(DF,r0)
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
 db(DT,"db",db_test[!(db_test %like% "sqlite")])
 select_sql <- c(
@@ -578,14 +580,14 @@ non_idx_n <- 3 + 3 + 3*length(db_test[!(db_test %like% "sqlite")])
 
 # INDEX
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 setkeyv(DT, Idx[[1]])
-r0 = eval(bquote(timing(DT[,c("grp_amount","grp_value") := lapply(.SD, sum), by = key(DT), .SDcols=c("amount","value")],
-                        N, paste("[.data.table","partition_aggr1","index","data.table",sep=";"))))
+r0 = timing(DT[,c("grp_amount","grp_value") := lapply(.SD, sum), by = key(DT), .SDcols=c("amount","value")],
+            N, paste("[.data.table","partition_aggr1","index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0))
 rm(r0,DT)
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
 db(DT,"db",db_test[!(db_test %like% "sqlite")])
 create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
@@ -621,26 +623,24 @@ Partition by using non-aggregate function:
 W <- whereList(N=N)
 
 # NON INDEX
-DT = dw.populate(N, S=1, scenario="fact")
-DT_backup <- copy(DT)
 
 # previous (ordered by time) value of sales by customer
-DT <- copy(DT_backup)
+DT = copy(X$SALES)
 r1 = timing(DT[order(time_code), c("value_lag_1") := shift(value, n=1, fill=NA, type="lag"), by="cust_code"],
             N, paste("[.data.table","partition_non_aggr1","no_index","data.table",sep=";"))
 # next time and value of sales by customer
-DT <- copy(DT_backup)
+DT = copy(X$SALES)
 r2 = timing(DT[order(time_code), c(paste(c("time_code","value"),"lead_1",sep="_")) := shift(.SD, n=1, fill=NA, type="lead"), by="cust_code", .SDcols=c("time_code","value")],
             N, paste("[.data.table","partition_non_aggr2","no_index","data.table",sep=";"))
 # previous customer, geography, time from 1 to 3 each by product
-DT <- copy(DT_backup)
+DT = copy(X$SALES)
 r3 = timing(DT[order(time_code), c(paste0(paste0(c(sapply(c("cust_code","geog_code","time_code"), function(x) rep(x,3))), "_lag_"),rep(1:3,3))) := shift(.SD, n=1:3, fill=NA, type="lag"), by="prod_code", .SDcols=c("cust_code","geog_code","time_code")],
             N, paste("[.data.table","partition_non_aggr3","no_index","data.table",sep=";"))
 # # [ ] TO DO check why not match to postgres
 
 
 # # [ ] TO DO dplyr lag order_by by: http://stackoverflow.com/questions/27812975/percentage-difference-between-two-events/27813010#27813010
-# DF = as.data.frame(DT_backup)
+# DF = as.data.frame(copy(X$SALES))
 # DF <- group_by(DF, cust_code) %>% mutate(value_lag_1 = lag(value,1,order_by=time_code))
 # r0 = timing(DF <- group_by(DF, cust_code) %>% mutate(value_lag_1 = lag(value,1,order_by=time_code)),
 #             N, paste("select-mutate-lag","partition_non_aggr1","no_index","dplyr",sep=";"))
@@ -653,7 +653,7 @@ r3 = timing(DT[order(time_code), c(paste0(paste0(c(sapply(c("cust_code","geog_co
 # stopifnot(data.equal.data.table(setDT(r3),setDT(as.data.frame(r0))))
 # rm(DF,r0)
 
-DT <- copy(DT_backup)
+DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
 db(DT,"db",db_test[!(db_test %like% "sqlite")])
 select_sql <- c(
@@ -666,7 +666,7 @@ r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_non_aggr",i),"no_index",db_t,sep=";"))))
     #stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
-    if(!data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0)) warning("db to dt test failed")#browser()
+    if(!data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0)) warning("db to dt test failed") #browser()
     invisible()
   })
 })
@@ -687,26 +687,24 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 ## inner join
 
 ```{r inner_join, echo=FALSE}
-X <- dw.populate(N, S=1, scenario="star", setkey=FALSE)
 FT <- copy(X$SALES)
 JN <- copy(X$PRODUCT[sample(1:nrow(X$PRODUCT),nrow(X$PRODUCT)/2,FALSE)])
-rm(X)
 
 # NO INDEX
 
 df = as.data.frame(FT)
 jn = as.data.frame(JN)
-r1 = eval(bquote(timing(merge(df, jn, by = "prod_code",all = FALSE),
-                        N, paste("merge","inner_join","no_index","base",sep=";"))))
-r0 = eval(bquote(timing(df %>% inner_join(jn, by="prod_code"),
-                        N, paste("inner_join","inner_join","no_index","dplyr",sep=";"))))
+r1 = timing(merge(df, jn, by = "prod_code",all = FALSE),
+            N, paste("merge","inner_join","no_index","base",sep=";"))
+r0 = timing(df %>% inner_join(jn, by="prod_code"),
+            N, paste("inner_join","inner_join","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r1),setDT(r0),ignore_col_order = TRUE))
 rm(df,jn,r0)
 
 dt <- copy(FT)
 jn <- copy(JN)
-r0 = eval(bquote(timing(setkeyv(jn,"prod_code")[setcolorder(dt,c("prod_code",names(dt)[names(dt)!="prod_code"])),nomatch=0],
-                        N, paste("[.data.table","inner_join","no_index","data.table",sep=";"))))
+r0 = timing(setkeyv(jn,"prod_code")[setcolorder(dt,c("prod_code",names(dt)[names(dt)!="prod_code"])),nomatch=0],
+            N, paste("[.data.table","inner_join","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0,ignore_col_order = TRUE))
 rm(r0,dt,jn)
 
@@ -728,8 +726,8 @@ dt <- copy(FT)
 jn <- copy(JN)
 setkeyv(dt,"prod_code")
 setkeyv(jn,"prod_code")
-r0 = eval(bquote(timing(dt[jn,nomatch=0],
-                        N, paste("[.data.table","inner_join","index","data.table",sep=";"))))
+r0 = timing(dt[jn,nomatch=0],
+            N, paste("[.data.table","inner_join","index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0,ignore_col_order = TRUE))
 
 try(db("DROP TABLE db", db_test),silent = TRUE)
@@ -760,26 +758,24 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 ## outer join
 
 ```{r outer_join, echo=FALSE}
-X <- dw.populate(N, S=1, scenario="star", setkey=FALSE)
 FT <- copy(X$SALES)
 JN <- copy(X$PRODUCT[sample(1:nrow(X$PRODUCT),nrow(X$PRODUCT)/2,FALSE)])
-rm(X)
 
 # NO INDEX
 
 df = as.data.frame(FT)
 jn = as.data.frame(JN)
-r1 = eval(bquote(timing(merge(df, jn, by = "prod_code",all.x = TRUE, sort=FALSE),
-                        N, paste("merge","left_join","no_index","base",sep=";"))))
-r0 = eval(bquote(timing(df %>% left_join(jn, by="prod_code"),
-                        N, paste("left_join","left_join","no_index","dplyr",sep=";"))))
+r1 = timing(merge(df, jn, by = "prod_code",all.x = TRUE, sort=FALSE),
+            N, paste("merge","left_join","no_index","base",sep=";"))
+r0 = timing(df %>% left_join(jn, by="prod_code"),
+            N, paste("left_join","left_join","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r1),setDT(r0),ignore_col_order = TRUE))
 rm(df,jn,r0)
 
 dt <- copy(FT)
 jn <- copy(JN)
-r0 = eval(bquote(timing(setkeyv(jn,"prod_code")[setcolorder(dt,c("prod_code",names(dt)[names(dt)!="prod_code"])),nomatch=NA],
-                        N, paste("[.data.table","left_join","no_index","data.table",sep=";"))))
+r0 = timing(setkeyv(jn,"prod_code")[setcolorder(dt,c("prod_code",names(dt)[names(dt)!="prod_code"])),nomatch=NA],
+            N, paste("[.data.table","left_join","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0,ignore_col_order = TRUE))
 rm(r0,dt,jn)
 
@@ -801,8 +797,8 @@ dt <- copy(FT)
 jn <- copy(JN)
 setkeyv(dt,"prod_code")
 setkeyv(jn,"prod_code")
-r0 = eval(bquote(timing(jn[dt,nomatch=NA],
-                        N, paste("[.data.table","left_join","index","data.table",sep=";"))))
+r0 = timing(jn[dt,nomatch=NA],
+            N, paste("[.data.table","left_join","index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0,ignore_col_order = TRUE))
 
 try(db("DROP TABLE db", db_test),silent = TRUE)
@@ -856,17 +852,19 @@ CJ.dt = function(X,Y) {
 
 # NON INDEX
 
-DT = dw.populate(N, S=1, scenario="fact")
+DT = copy(X$SALES)
 DT1 = DT[sample(1:nrow(DT),nr[1],TRUE)]
 DT2 = DT[sample(1:nrow(DT),nr[2],TRUE)]
 DF1 = as.data.frame(DT1)
 DF2 = as.data.frame(DT2)
 rm(DT)
 
-r1 = timing(merge(x = DF1, y = DF2, by = NULL), N, paste("merge","cross_join","no_index","base",sep=";"))
+r1 = timing(merge(x = DF1, y = DF2, by = NULL),
+            N, paste("merge","cross_join","no_index","base",sep=";"))
 rm(DF1,DF2)
 
-r0 = timing(CJ.dt(DT1,DT2), N, paste("[.data.table","cross_join","no_index","data.table",sep=";"))
+r0 = timing(CJ.dt(DT1,DT2),
+            N, paste("[.data.table","cross_join","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(
   setDT(r1),
   setnames(r0,c("cust_code", "prod_code", "geog_code", "time_code", "curr_code","amount", "value", "i.cust_code", "i.prod_code", "i.geog_code","i.time_code", "i.curr_code", "i.amount", "i.value"),c("cust_code.x", "prod_code.x", "geog_code.x", "time_code.x", "curr_code.x", "amount.x", "value.x", "cust_code.y", "prod_code.y", "geog_code.y", "time_code.y", "curr_code.y", "amount.y", "value.y")),
