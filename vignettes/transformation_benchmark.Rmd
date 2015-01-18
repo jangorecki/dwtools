@@ -221,7 +221,9 @@ Idx = list(c("cust_code", "prod_code", "geog_code"), c("cust_code",
 "geog_code", "curr_code"), c("prod_code", "geog_code"))
 ```
 
-Each of below tests can be re-run separately
+```{r benchmark_start, echo=FALSE}
+# Each of below tests can be re-run separately
+```
 
 ## write data
 
@@ -483,7 +485,7 @@ r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("group",i),"no_index",db_t,sep=";"))))
     rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
-    # if(!(data.equal.data.table(rr,r0))) browser() # TO DO n=1e6 failed
+    if(!(data.equal.data.table(rr,r0))) browser() # TO DO n=1e6 failed
     stopifnot(data.equal.data.table(rr,r0))
     invisible()
   })
@@ -622,21 +624,22 @@ Partition by using non-aggregate function:
 ```{r partition_non_aggr, echo=FALSE, eval=FALSE}
 W <- whereList(N=N)
 
+# psql did not retain order of `order by` in case of duplicates: lag() over (partition by ... order by ...)
+# possibly other sql db as well due to sql unordered nature
+# populating unique `order by` field in partitions
+DTunq = copy(X$SALES)
+DTunq[,time_code:=as.Date(1:.N,origin="2015-01-01"),by="cust_code"]
+
 # NON INDEX
 
 # previous (ordered by time) value of sales by customer
-DT = copy(X$SALES)
+DT = copy(DTunq)
 r1 = timing(DT[order(time_code), c("value_lag_1") := shift(value, n=1, fill=NA, type="lag"), by="cust_code"],
             N, paste("[.data.table","partition_non_aggr1","no_index","data.table",sep=";"))
 # next time and value of sales by customer
-DT = copy(X$SALES)
+DT = copy(DTunq)
 r2 = timing(DT[order(time_code), c(paste(c("time_code","value"),"lead_1",sep="_")) := shift(.SD, n=1, fill=NA, type="lead"), by="cust_code", .SDcols=c("time_code","value")],
             N, paste("[.data.table","partition_non_aggr2","no_index","data.table",sep=";"))
-# previous customer, geography, time from 1 to 3 each by product
-DT = copy(X$SALES)
-r3 = timing(DT[order(time_code), c(paste0(paste0(c(sapply(c("cust_code","geog_code","time_code"), function(x) rep(x,3))), "_lag_"),rep(1:3,3))) := shift(.SD, n=1:3, fill=NA, type="lag"), by="prod_code", .SDcols=c("cust_code","geog_code","time_code")],
-            N, paste("[.data.table","partition_non_aggr3","no_index","data.table",sep=";"))
-# # [ ] TO DO check why not match to postgres
 
 
 # # [ ] TO DO dplyr lag order_by by: http://stackoverflow.com/questions/27812975/percentage-difference-between-two-events/27813010#27813010
@@ -648,33 +651,31 @@ r3 = timing(DT[order(time_code), c(paste0(paste0(c(sapply(c("cust_code","geog_co
 # r0 = timing(,#
 #             N, paste("select-group_by-mutate_each","partition_non_aggr2","no_index","dplyr",sep=";"))
 # stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
-# r0 = timing(,#
-#             N, paste("select-group_by-mutate_each","partition_non_aggr3","no_index","dplyr",sep=";"))
-# stopifnot(data.equal.data.table(setDT(r3),setDT(as.data.frame(r0))))
 # rm(DF,r0)
 
-DT = copy(X$SALES)
+
+DT = copy(DTunq)
 try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
 db(DT,"db",db_test[!(db_test %like% "sqlite")])
 select_sql <- c(
   paste0("SELECT *, lag(value,1) over (partition by cust_code order by time_code asc) as value_lag_1 FROM db"),
-  paste0("SELECT *, lead(time_code,1) over (partition by cust_code order by time_code asc) as time_code_lead_1, lead(value,1) over (partition by cust_code order by time_code asc) as value_lead_1 FROM db"),
-  paste0("SELECT *, lag(cust_code,1) over (partition by prod_code order by time_code asc) as cust_code_lag_1, lag(cust_code,2) over (partition by prod_code order by time_code asc) as cust_code_lag_2, lag(cust_code,3) over (partition by prod_code order by time_code asc) as cust_code_lag_3, lag(geog_code,1) over (partition by prod_code order by time_code asc) as geog_code_lag_1, lag(geog_code,2) over (partition by prod_code order by time_code asc) as geog_code_lag_2, lag(geog_code,3) over (partition by prod_code order by time_code asc) as geog_code_lag_3, lag(time_code,1) over (partition by prod_code order by time_code asc) as time_code_lag_1, lag(time_code,2) over (partition by prod_code order by time_code asc) as time_code_lag_2, lag(time_code,3) over (partition by prod_code order by time_code asc) as time_code_lag_3 FROM db") # 826 chars, dt 239 chars
+  paste0("SELECT *, lead(time_code,1) over (partition by cust_code order by time_code asc) as time_code_lead_1, lead(value,1) over (partition by cust_code order by time_code asc) as value_lead_1 FROM db")
 )
 # exclude sqlite
 r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_non_aggr",i),"no_index",db_t,sep=";"))))
-    #stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
-    if(!data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0)) warning("db to dt test failed") #browser()
+    stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
+    #if(!data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0)) browser() # warning("db to dt test failed") #
     invisible()
   })
 })
-non_idx_n <- 3 + 0 + 3*length(db_test[!(db_test %like% "sqlite")])
-# target: 3 + 3 + 3*length(db_test[!(db_test %like% "sqlite")])
+non_idx_n <- 2 + 0 + 2*length(db_test[!(db_test %like% "sqlite")])
+# target: 2 + 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 
 # INDEX
 idx_n = 0
+# target: 2 + 0 + 2*length(db_test[!(db_test %like% "sqlite")])
 
 last = non_idx_n + idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
@@ -965,16 +966,67 @@ last = 0
 
 ## distinct
 
-```{r distinct, echo=FALSE, eval=FALSE}
+```{r distinct, echo=FALSE}
+DT = copy(X$SALES)
+# DT = rbindlist(list(DT,DT))
+
+# NON INDEX
 
 # base unique
-
+DF = as.data.frame(DT)
+r1 <-timing(unique(DF),
+            N, paste("unique","distinct","no_index","base",sep=";"))
 # dt unique
-
+r0 <- timing(unique(DT,by=names(DT)),
+             N, paste("[.data.table","distinct","no_index","data.table",sep=";"))
+stopifnot(data.equal.data.table(setDT(r1),r0))
 # dplyr distinct
-
+DF = as.data.frame(DT)
+r0 <- timing(distinct(DF),
+             N, paste("distinct","distinct","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(r0)))
 # sql distinct
+try(db("DROP TABLE db", db_test),silent = TRUE)
+db(DT,"db",db_test)
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT DISTINCT * FROM db",.(db_t)),
+                          N,paste("db","distinct","no_index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+non_idx_n <- 1 + 1 + 1 + 1*length(db_test)
 
+rm(DF)
+
+# INDEX
+setkeyv(DT,names(DT))
+r0 <- timing(unique(DT,by=names(DT)),
+             N, paste("[.data.table","distinct","index","data.table",sep=";"))
+stopifnot(data.equal.data.table(r1,r0))
+
+DT = copy(X$SALES)
+# DT = rbindlist(list(DT,DT))
+try(db("DROP TABLE db", db_test),silent = TRUE)
+db(DT,"db",db_test)
+r = lapply(db_test, function(db_t){
+  db(paste0("CREATE INDEX db_idx_all ON db (",paste(names(DT),collapse=","),")"),db_t)
+})
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT DISTINCT * FROM db",.(db_t)),
+                          N,paste("db","distinct","index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+idx_n <- 1 + 1*length(db_test)
+
+rm(DT,r0,r1)
+
+last = idx_n+non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
+```
+
+```{r distinct_show, echo=FALSE, results='asis'}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## union
