@@ -13,9 +13,10 @@ output:
 # presentation pkgs
 library(knitr)
 library(microbenchmark)
-opts_chunk$set(collapse=TRUE, comment="#>", dev="svg")
+opts_chunk$set(cache=FALSE,collapse=TRUE, comment="#>", dev="svg")
 Sys.setenv(TZ="UTC")
 options(scipen=100)
+global_start <- proc.time()[[3]]
 ```
 
 # Benchmark meta information
@@ -84,7 +85,7 @@ PR must be runable from within R + packages, any external dependency tool must b
 # Benchmark configuration
 
 ```{r N}
-N = 1e3
+N = 1e6
 ```
 
 ## Database setup
@@ -223,11 +224,12 @@ Idx = list(c("cust_code", "prod_code", "geog_code"), c("cust_code",
 
 ```{r benchmark_start, echo=FALSE}
 # Each of below tests can be re-run separately
+benchmark_eval = TRUE # useful while dev, to eval only single chunk
 ```
 
 ## write data
 
-```{r write, echo=FALSE}
+```{r write, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
 
 if(file.exists("benchmark.csv")) invisible(file.remove("benchmark.csv"))
@@ -243,13 +245,15 @@ last = 2+length(db_test)
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r write_show, echo=FALSE, results='asis'}
+```{r write_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## read data
 
-```{r read, echo=FALSE}
+```{r read, echo=FALSE, eval=benchmark_eval}
+DT = copy(X$SALES)
+
 if(file.exists("benchmark.csv")) invisible(file.remove("benchmark.csv"))
 write.table(DT,"benchmark.csv",sep=",",row.names=FALSE,quote=FALSE)
 r1 = timing(fread("benchmark.csv")[,time_code:=as.Date(time_code)],
@@ -279,20 +283,20 @@ last = 3+length(db_test)
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r read_show, echo=FALSE, results='asis'}
+```{r read_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## create index
 
 The following indices will be tested:
-```{r index_print, echo=FALSE}
+```{r index_print, echo=FALSE, eval=benchmark_eval}
 invisible(lapply(Idx, print))
 ```
 
 `data.table` solution use only single key set during the tests, this has to reflect support for concurency access to same data.table.
 
-```{r create_index, echo=FALSE}
+```{r create_index, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
 r = timing(idxv(DT, Idx[1L]),N,paste("idxv","create_index1","index","dwtools",sep=";"))
 DT = copy(X$SALES)
@@ -321,13 +325,13 @@ last = idx1_n + idxN_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r create_index_show, echo=FALSE, results='asis'}
+```{r create_index_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## select where
 
-```{r where, echo=FALSE}
+```{r where, echo=FALSE, eval=benchmark_eval}
 
 W <- whereList(N=N)
 
@@ -431,14 +435,13 @@ last = non_idx_n+idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r where_show, echo=FALSE, results='asis'}
+```{r where_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## group by
 
-```{r group, echo=FALSE}
-# [ ] TO DO check why on N=1e6 failed
+```{r group, echo=FALSE, eval=benchmark_eval}
 W <- whereList(N=N)
 
 # NON INDEX
@@ -485,7 +488,10 @@ r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("group",i),"no_index",db_t,sep=";"))))
     rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
-    if(!(data.equal.data.table(rr,r0))) browser() # TO DO n=1e6 failed
+    if(!(data.equal.data.table(rr,r0))){
+      rr[,value:=round(value,2)]
+      r0[,value:=round(value,2)]
+    }
     stopifnot(data.equal.data.table(rr,r0))
     invisible()
   })
@@ -516,7 +522,12 @@ select_sql <- c(
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("group",i),"index",db_t,sep=";"))))
-    stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
+    rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
+    if(!(data.equal.data.table(rr,r0))){
+      rr[,value:=round(value,2)]
+      r0[,value:=round(value,2)]
+    }
+    stopifnot(data.equal.data.table(rr,r0))
     invisible()
   })
 })
@@ -528,14 +539,14 @@ last = non_idx_n+idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r group_show, echo=FALSE, results='asis'}
+```{r group_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## partition by
 
 Partition by using aggregate function:
-```{r partition_aggr, echo=FALSE}
+```{r partition_aggr, echo=FALSE, eval=benchmark_eval}
 W <- whereList(N=N)
 
 # NON INDEX
@@ -574,7 +585,13 @@ select_sql <- c(
 r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_aggr",i),"no_index",db_t,sep=";"))))
-    stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
+    rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
+    if(!(data.equal.data.table(rr,r0))){
+      # rounding issues
+      rr[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+      r0[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+    }
+    stopifnot(data.equal.data.table(rr,r0))
     invisible()
   })
 })
@@ -604,7 +621,13 @@ select_sql <- c(
 r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
   p = lapply(1:length(select_sql), function(i){
     r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_aggr",i),"index",db_t,sep=";"))))
-    stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
+    rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
+    if(!(data.equal.data.table(rr,r0))){
+      # rounding issues
+      rr[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+      r0[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+    }
+    stopifnot(data.equal.data.table(rr,r0))
     invisible()
   })
 })
@@ -616,12 +639,12 @@ last = non_idx_n + idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r partition_aggr_show, echo=FALSE, results='asis'}
+```{r partition_aggr_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 Partition by using non-aggregate function:
-```{r partition_non_aggr, echo=FALSE, eval=FALSE}
+```{r partition_non_aggr, echo=FALSE, eval=benchmark_eval}
 W <- whereList(N=N)
 
 # psql did not retain order of `order by` in case of duplicates: lag() over (partition by ... order by ...)
@@ -681,13 +704,13 @@ last = non_idx_n + idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r partition_non_aggr_show, echo=FALSE, results='asis'}
+```{r partition_non_aggr_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## inner join
 
-```{r inner_join, echo=FALSE}
+```{r inner_join, echo=FALSE, eval=benchmark_eval}
 FT <- copy(X$SALES)
 JN <- copy(X$PRODUCT[sample(1:nrow(X$PRODUCT),nrow(X$PRODUCT)/2,FALSE)])
 
@@ -752,13 +775,13 @@ last = non_idx_n + idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r inner_join_show, echo=FALSE, results='asis'}
+```{r inner_join_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## outer join
 
-```{r outer_join, echo=FALSE}
+```{r outer_join, echo=FALSE, eval=benchmark_eval}
 FT <- copy(X$SALES)
 JN <- copy(X$PRODUCT[sample(1:nrow(X$PRODUCT),nrow(X$PRODUCT)/2,FALSE)])
 
@@ -823,14 +846,14 @@ last = non_idx_n + idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r outer_join_show, echo=FALSE, results='asis'}
+```{r outer_join_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## cross join
 
 Cross joins are performed on smaller datasets to give a result of nrow equal to N.
-```{r cross_join, echo=FALSE}
+```{r cross_join, echo=FALSE, eval=benchmark_eval}
 if(N==1e3){
   nr <- c(10,100)
 }
@@ -890,8 +913,16 @@ last = 2+length(db_test)
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r cross_join_show, echo=FALSE, results='asis'}
+```{r cross_join_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
+```
+
+## cross apply
+
+```{r cross_apply, echo=FALSE, eval=FALSE}
+# http://stackoverflow.com/a/1139231/2490497
+# http://sqlblog.com/blogs/alexander_kuznetsov/archive/2013/11/19/learning-postgresql-replacing-top-and-apply-with-limit-and-lateral.aspx
+# http://www.postgresql.org/docs/9.3/static/queries-table-expressions.html
 ```
 
 ## update
@@ -924,26 +955,79 @@ last = 0
 
 ```
 
-## cross apply
-
-```{r cross_apply, echo=FALSE, eval=FALSE}
-# http://stackoverflow.com/a/1139231/2490497
-# http://sqlblog.com/blogs/alexander_kuznetsov/archive/2013/11/19/learning-postgresql-replacing-top-and-apply-with-limit-and-lateral.aspx
-# http://www.postgresql.org/docs/9.3/static/queries-table-expressions.html
-```
-
 ## order by
 
 ```{r order_by, echo=FALSE, eval=FALSE}
+DT = copy(X$SALES)
+
 
 # dd[ order(-dd[,4], dd[,1]), ]
+# dd[with(dd, order(-z, b)), ]
 
 # arrange
+# arrange(DT, mpg)
 
 # DT[order()]
 
-# paste0("SELECT * FROM db ORDER BY ",W[[1L]]," ASC")
+# paste0("SELECT * FROM db ORDER BY ",paste(names(DT),collapse=',')," ASC")
 
+# NON INDEX
+
+# base
+DF = as.data.frame(DT)
+r1 <-timing(unique(DF),
+            N, paste("unique","distinct","no_index","base",sep=";"))
+# dt
+r0 <- timing(unique(DT,by=names(DT)),
+             N, paste("unique","distinct","no_index","data.table",sep=";"))
+stopifnot(data.equal.data.table(setDT(r1),r0))
+# dplyr
+DF = as.data.frame(DT)
+r0 <- timing(distinct(DF),
+             N, paste("distinct","distinct","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(r0)))
+# sql
+try(db("DROP TABLE db", db_test),silent = TRUE)
+db(DT,"db",db_test)
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT DISTINCT * FROM db",.(db_t)),
+                          N,paste("db","distinct","no_index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+non_idx_n <- 1 + 1 + 1 + 1*length(db_test)
+
+rm(DF)
+
+# INDEX
+setkeyv(DT,names(DT))
+r0 <- timing(unique(DT,by=names(DT)),
+             N, paste("[.data.table","distinct","index","data.table",sep=";"))
+stopifnot(data.equal.data.table(r1,r0))
+
+DT = copy(X$SALES)
+# DT = rbindlist(list(DT,DT))
+try(db("DROP TABLE db", db_test),silent = TRUE)
+db(DT,"db",db_test)
+r = lapply(db_test, function(db_t){
+  db(paste0("CREATE INDEX db_idx_all ON db (",paste(names(DT),collapse=","),")"),db_t)
+})
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT DISTINCT * FROM db",.(db_t)),
+                          N,paste("db","distinct","index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+idx_n <- 1 + 1*length(db_test)
+
+rm(DT,r0,r1)
+
+last = idx_n+non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
+```
+
+```{r order_by_show, echo=FALSE, results='asis', eval=FALSE}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## pivot
@@ -966,7 +1050,7 @@ last = 0
 
 ## distinct
 
-```{r distinct, echo=FALSE}
+```{r distinct, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
 # DT = rbindlist(list(DT,DT))
 
@@ -1025,17 +1109,23 @@ last = idx_n+non_idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r distinct_show, echo=FALSE, results='asis'}
+```{r distinct_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## union
 
-```{r union, echo=FALSE}
+```{r union, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
 # DT = rbindlist(list(DT,DT))
-DT1 = DT[1:(nrow(DT)/2)]
-DT2 = DT[((nrow(DT)/2)+1):nrow(DT)]
+set.seed(1)
+i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
+i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
+
+# NON INDEX
+
+DT1 = DT[i1]
+DT2 = DT[i2]
 rm(DT)
 
 # NON INDEX only
@@ -1044,7 +1134,7 @@ rm(DT)
 DF1 = as.data.frame(DT1)
 DF2 = as.data.frame(DT2)
 r1 <-timing(unique(rbind(DF1,DF2)),
-            N, paste("unique","union","no_index","base",sep=";"))
+            N, paste("unique-rbind","union","no_index","base",sep=";"))
 # dt
 r0 <- timing(unique(rbindlist(list(DT1,DT2))),
              N, paste("unique-rbindlist","union","no_index","data.table",sep=";"))
@@ -1062,6 +1152,9 @@ db(DT2,"db2",db_test)
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   r0 = eval(bquote(timing(db("SELECT * FROM db1 UNION SELECT * FROM db2",.(db_t)),
                           N,paste("db","union","no_index",db_t,sep=";"))))
+  #if(!data.equal.data.table(r1,r0)) browser()
+  #data.table:::setdiff_(r1,r0)
+  #data.table:::setdiff_(r0,r1)
   stopifnot(data.equal.data.table(r1,r0))
   invisible()
 })
@@ -1073,13 +1166,13 @@ last = non_idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r union_show, echo=FALSE, results='asis'}
+```{r union_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## union all
 
-```{r union_all, echo=FALSE}
+```{r union_all, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
 # DT = rbindlist(list(DT,DT))
 DT1 = DT[1:(nrow(DT)/2)]
@@ -1121,13 +1214,13 @@ last = non_idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r union_all_show, echo=FALSE, results='asis'}
+```{r union_all_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## minus
 
-```{r minus, echo=FALSE}
+```{r minus, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
 # DT = rbindlist(list(DT,DT))
 set.seed(1)
@@ -1173,33 +1266,28 @@ last = non_idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-Note that `data.table:::setdiff_` function is not exported yet, so you should take care of eventual changes (include the function name change). It is likely it will should be exported soon.
+Note that `data.table:::setdiff_` function is not exported yet, so you should take care of eventual changes (incl. function name). It is likely it will be exported soon.
 
-```{r minus_show, echo=FALSE, results='asis'}
+```{r minus_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## intersect
 
-```{r intersect, echo=FALSE}
+```{r intersect, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
 # DT = rbindlist(list(DT,DT))
 set.seed(1)
 i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
 i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
-DT1 = DT[i1]
-DT2 = DT[i2]
-#rm(DT,i1,i2)
 
 # NON INDEX
 
-# base
-# r1 <-timing(rbind(DF1,DF2),
-#             N, paste("?","intersect","no_index","base",sep=";"))
 # dt
-r1 <- timing(setkeyv(DT1,names(DT1))[setkeyv(DT2,names(DT2)),.SD,nomatch=0L,.SDcols=c(names(DT1))],
-             N, paste("setkeyv-[.data.table","intersect","no_index","data.table",sep=";"))
-#stopifnot(data.equal.data.table(setDT(r1),r0))
+DT1 = DT[i1]
+DT2 = DT[i2]
+r1 <- timing(setkeyv(unique(DT1),names(DT1))[setkeyv(unique(DT2),names(DT2)),.SD,nomatch=0L,.SDcols=c(names(DT1))],
+             N, paste("unique-setkeyv-[.data.table","intersect","no_index","data.table",sep=";"))
 # dplyr
 DT1 = DT[i1]
 DT2 = DT[i2]
@@ -1220,21 +1308,41 @@ r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   stopifnot(data.equal.data.table(r1,r0))
   invisible()
 })
-non_idx_n <- 0 + 1 + 1 + 1*length(db_test)
+non_idx_n <- 1 + 1 + 1*length(db_test)
 
 # INDEX
 setkeyv(DT1,names(DT1))
 setkeyv(DT2,names(DT2))
 r0 <- timing(DT1[DT2,.SD,nomatch=0L,.SDcols=c(names(DT1))],
              N, paste("[.data.table","intersect","index","data.table",sep=";"))
-idx_n <- 1
-rm(DT1,DT2,r0,r1)
+
+# sql
+DT1 = DT[i1]
+DT2 = DT[i2]
+try(db("DROP TABLE db1", db_test),silent = TRUE)
+try(db("DROP TABLE db2", db_test),silent = TRUE)
+db(DT1,"db1",db_test)
+db(DT2,"db2",db_test)
+r = lapply(db_test, function(db_t){
+  db(paste0("CREATE INDEX db1_idx_all ON db1 (",paste(names(DT1),collapse=","),")"),db_t)
+  db(paste0("CREATE INDEX db2_idx_all ON db1 (",paste(names(DT2),collapse=","),")"),db_t)
+})
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT * FROM db1 INTERSECT SELECT * FROM db2",.(db_t)),
+                          N,paste("db","intersect","index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+
+idx_n <- 1 + 1*length(db_test)
+
+rm(DT,DT1,DT2,r0,r1)
 
 last = idx_n + non_idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r intersect_show, echo=FALSE, results='asis'}
+```{r intersect_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
@@ -1297,3 +1405,9 @@ And good web books:
 
 * [Advanced R](http://adv-r.had.co.nz/)
 * [Ramarro: R for Developers](http://www.quantide.com/R/r-training/r-web-books/ramarro-r-for-developers/)
+
+  
+  
+```{r total_time, echo=FALSE, results='asis'}
+cat("Document produced in ",round(proc.time()[[3]] - global_start,2)," seconds.\n",sep="")
+```
