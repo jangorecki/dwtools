@@ -972,20 +972,20 @@ DT = copy(X$SALES)
 
 # NON INDEX
 
-# base unique
+# base
 DF = as.data.frame(DT)
 r1 <-timing(unique(DF),
             N, paste("unique","distinct","no_index","base",sep=";"))
-# dt unique
+# dt
 r0 <- timing(unique(DT,by=names(DT)),
-             N, paste("[.data.table","distinct","no_index","data.table",sep=";"))
+             N, paste("unique","distinct","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(setDT(r1),r0))
-# dplyr distinct
+# dplyr
 DF = as.data.frame(DT)
 r0 <- timing(distinct(DF),
              N, paste("distinct","distinct","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(r1,setDT(r0)))
-# sql distinct
+# sql
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
@@ -1031,52 +1031,214 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 
 ## union
 
-```{r union, echo=FALSE, eval=FALSE}
-# unique(rbindlist(list(x,y)))
+```{r union, echo=FALSE}
+DT = copy(X$SALES)
+# DT = rbindlist(list(DT,DT))
+DT1 = DT[1:(nrow(DT)/2)]
+DT2 = DT[((nrow(DT)/2)+1):nrow(DT)]
+rm(DT)
 
+# NON INDEX only
+
+# base
+DF1 = as.data.frame(DT1)
+DF2 = as.data.frame(DT2)
+r1 <-timing(unique(rbind(DF1,DF2)),
+            N, paste("unique","union","no_index","base",sep=";"))
+# dt
+r0 <- timing(unique(rbindlist(list(DT1,DT2))),
+             N, paste("unique-rbindlist","union","no_index","data.table",sep=";"))
+stopifnot(data.equal.data.table(setDT(r1),r0))
+# dplyr
+r0 <- timing(union(DF1,DF2),
+             N, paste("union","union","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(r0)))
+rm(DF1,DF2)
+# sql
+try(db("DROP TABLE db1", db_test),silent = TRUE)
+try(db("DROP TABLE db2", db_test),silent = TRUE)
+db(DT1,"db1",db_test)
+db(DT2,"db2",db_test)
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT * FROM db1 UNION SELECT * FROM db2",.(db_t)),
+                          N,paste("db","union","no_index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+non_idx_n <- 1 + 1 + 1 + 1*length(db_test)
+
+rm(DT1,DT2,r0,r1)
+
+last = non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
+```
+
+```{r union_show, echo=FALSE, results='asis'}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## union all
 
-```{r union_all, echo=FALSE, eval=FALSE}
+```{r union_all, echo=FALSE}
+DT = copy(X$SALES)
+# DT = rbindlist(list(DT,DT))
+DT1 = DT[1:(nrow(DT)/2)]
+DT2 = DT[((nrow(DT)/2)+1):nrow(DT)]
+rm(DT)
 
-# rbind
+# NON INDEX only
 
-# rbind_rows
+# base
+DF1 = as.data.frame(DT1)
+DF2 = as.data.frame(DT2)
+r1 <-timing(rbind(DF1,DF2),
+            N, paste("rbind","union_all","no_index","base",sep=";"))
+# dt
+r0 <- timing(rbindlist(list(DT1,DT2)),
+             N, paste("rbindlist","union_all","no_index","data.table",sep=";"))
+stopifnot(data.equal.data.table(setDT(r1),r0))
+# dplyr
+r0 <- timing(bind_rows(list(DF1,DF2)),
+             N, paste("bind_rows","union_all","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(as.data.frame(r0))))
+rm(DF1,DF2,r0)
+# sql
+try(db("DROP TABLE db1", db_test),silent = TRUE)
+try(db("DROP TABLE db2", db_test),silent = TRUE)
+db(DT1,"db1",db_test)
+db(DT2,"db2",db_test)
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT * FROM db1 UNION ALL SELECT * FROM db2",.(db_t)),
+                          N,paste("db","union_all","no_index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+non_idx_n <- 1 + 1 + 1 + 1*length(db_test)
 
-# rbindlist
-#rbindlist(list(x,y))
+rm(DT1,DT2,r1)
 
+last = non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
+```
+
+```{r union_all_show, echo=FALSE, results='asis'}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## minus
 
-```{r minus, echo=FALSE, eval=FALSE}
+```{r minus, echo=FALSE}
+DT = copy(X$SALES)
+# DT = rbindlist(list(DT,DT))
+set.seed(1)
+i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
+i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
+DT1 = DT[i1]
+DT2 = DT[i2]
+rm(DT,i1,i2)
 
-# setdiff
+# NON INDEX only
 
-# setdiff_
-#data.table:::setdiff_(x,y)
+# base
 
-# SELECT * FROM db MINUS SELECT * FROM db
-# http://www.postgresqlforbeginners.com/2010/11/sql-union-except-and-intersect.html
+# r1 <-timing(rbind(DF1,DF2),
+#             N, paste("?","minus","no_index","base",sep=";"))
+# dt
+r1 <- timing(data.table:::setdiff_(DT1,DT2),
+             N, paste("data.table:::setdiff_","minus","no_index","data.table",sep=";"))
+#stopifnot(data.equal.data.table(setDT(r1),r0))
+# dplyr distinct
+DF1 = as.data.frame(DT1)
+DF2 = as.data.frame(DT2)
+r0 <- timing(setdiff(DF1,DF2),
+             N, paste("setdiff","minus","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(r0)))
+rm(DF1,DF2)
+# sql
+try(db("DROP TABLE db1", db_test),silent = TRUE)
+try(db("DROP TABLE db2", db_test),silent = TRUE)
+db(DT1,"db1",db_test)
+db(DT2,"db2",db_test)
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT * FROM db1 EXCEPT SELECT * FROM db2",.(db_t)),
+                          N,paste("db","minus","no_index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+non_idx_n <- 1 + 1 + 1*length(db_test)
 
+rm(DT1,DT2,r0,r1)
+
+last = non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
+
 Note that `data.table:::setdiff_` function is not exported yet, so you should take care of eventual changes (include the function name change). It is likely it will should be exported soon.
+
+```{r minus_show, echo=FALSE, results='asis'}
+invisible(showtiming(last=last)[,print_expr(.SD)])
+```
 
 ## intersect
 
-```{r intersect, echo=FALSE, eval=FALSE}
+```{r intersect, echo=FALSE}
+DT = copy(X$SALES)
+# DT = rbindlist(list(DT,DT))
+set.seed(1)
+i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
+i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
+DT1 = DT[i1]
+DT2 = DT[i2]
+#rm(DT,i1,i2)
 
+# NON INDEX
+
+# base
+# r1 <-timing(rbind(DF1,DF2),
+#             N, paste("?","intersect","no_index","base",sep=";"))
+# dt
+r1 <- timing(setkeyv(DT1,names(DT1))[setkeyv(DT2,names(DT2)),.SD,nomatch=0L,.SDcols=c(names(DT1))],
+             N, paste("setkeyv-[.data.table","intersect","no_index","data.table",sep=";"))
+#stopifnot(data.equal.data.table(setDT(r1),r0))
 # dplyr
+DT1 = DT[i1]
+DT2 = DT[i2]
+DF1 = as.data.frame(DT1)
+DF2 = as.data.frame(DT2)
+r0 <- timing(intersect(DF1,DF2),
+             N, paste("intersect","intersect","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(r0)))
+rm(DF1,DF2)
+# sql
+try(db("DROP TABLE db1", db_test),silent = TRUE)
+try(db("DROP TABLE db2", db_test),silent = TRUE)
+db(DT1,"db1",db_test)
+db(DT2,"db2",db_test)
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  r0 = eval(bquote(timing(db("SELECT * FROM db1 INTERSECT SELECT * FROM db2",.(db_t)),
+                          N,paste("db","intersect","no_index",db_t,sep=";"))))
+  stopifnot(data.equal.data.table(r1,r0))
+  invisible()
+})
+non_idx_n <- 0 + 1 + 1 + 1*length(db_test)
 
+# INDEX
+setkeyv(DT1,names(DT1))
+setkeyv(DT2,names(DT2))
+r0 <- timing(DT1[DT2,.SD,nomatch=0L,.SDcols=c(names(DT1))],
+             N, paste("[.data.table","intersect","index","data.table",sep=";"))
+idx_n <- 1
+rm(DT1,DT2,r0,r1)
 
-# intersect.data.table
-#setkeyv(setkeyv(ux,names(ux))[setkeyv(uy,names(uy)),.SD,nomatch=0L,.SDcols=c(names(ux))],NULL)
-
-
-
+last = idx_n + non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
+
+```{r intersect_show, echo=FALSE, results='asis'}
+invisible(showtiming(last=last)[,print_expr(.SD)])
+```
+
+# Benchmark summary
 
 ```{r benchmark_cleanup, echo=FALSE}
 if(file.exists("benchmark.rds")) invisible(file.remove("benchmark.rds"))
@@ -1085,8 +1247,6 @@ invisible(lapply(getOption("dwtools.db.conns"), function(db_test) dbDisconnect(d
 options("dwtools.db.conns"=NULL)
 if(file.exists("sqlite.db")) invisible(file.remove("sqlite.db"))
 ```
-
-# Benchmark summary
 
 ## Environment details
 
