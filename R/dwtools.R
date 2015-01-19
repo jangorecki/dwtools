@@ -98,10 +98,9 @@ pkgsVersion <- function(pkgs, libs = .libPaths()){
 #' @example tests/example-data_equal_data_table.R
 data.equal.data.table <- function(DT1, DT2, ignore_row_order=TRUE, ignore_col_order=FALSE, check.attributes=FALSE){
   if(check.attributes) stop("check.attributes TRUE is not supported, function test only the data.")
-  stopifnot(is.data.table(DT1),is.data.table(DT2))
+  if(!is.data.table(DT1)) DT1 <- as.data.table(DT1) else DT1 <- copy(DT1)
+  if(!is.data.table(DT2)) DT2 <- as.data.table(DT2) else DT2 <- copy(DT2)
   if(!identical(length(DT1),length(DT2))) return(FALSE)
-  DT1 <- copy(DT1)
-  DT2 <- copy(DT2)
   if(!ignore_row_order && !ignore_col_order) return(identical(DT1,DT2))
   if(ignore_col_order){
     if(!identical(names(DT1),names(DT2))){
