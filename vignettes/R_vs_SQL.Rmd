@@ -663,20 +663,17 @@ r1 = timing(DT[order(time_code), c("value_lag_1") := shift(value, n=1, fill=NA, 
 DT = copy(DTunq)
 r2 = timing(DT[order(time_code), c(paste(c("time_code","value"),"lead_1",sep="_")) := shift(.SD, n=1, fill=NA, type="lead"), by="cust_code", .SDcols=c("time_code","value")],
             N, paste("[.data.table","partition_non_aggr2","no_index","data.table",sep=";"))
+# dplyr
+DF = as.data.frame(copy(DTunq))
+r0 = timing(DF %>% group_by(cust_code) %>% mutate(value_lag_1 = lag(order_by = time_code, value)),
+            N, paste("group_by-mutate-lag","partition_non_aggr1","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(r1,setDT(as.data.frame(r0))))
 
-
-# # [ ] TO DO dplyr lag order_by by: http://stackoverflow.com/questions/27812975/percentage-difference-between-two-events/27813010#27813010
-# DF = as.data.frame(copy(X$SALES))
-# DF <- group_by(DF, cust_code) %>% mutate(value_lag_1 = lag(value,1,order_by=time_code))
-# r0 = timing(DF <- group_by(DF, cust_code) %>% mutate(value_lag_1 = lag(value,1,order_by=time_code)),
-#             N, paste("select-mutate-lag","partition_non_aggr1","no_index","dplyr",sep=";"))
-# stopifnot(data.equal.data.table(r1,setDT(as.data.frame(r0))))
-# r0 = timing(,#
-#             N, paste("select-group_by-mutate_each","partition_non_aggr2","no_index","dplyr",sep=";"))
-# stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
-# rm(DF,r0)
-
-
+r0 = timing(DF %>% group_by(cust_code) %>% mutate(time_code_lead_1 = lead(order_by = time_code, time_code), value_lead_1 = lead(order_by = time_code, value)),
+            N, paste("select-group_by-mutate_each","partition_non_aggr2","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
+rm(DF,r0)
+# sql
 DT = copy(DTunq)
 try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
 db(DT,"db",db_test[!(db_test %like% "sqlite")])
@@ -693,7 +690,7 @@ r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each
     invisible()
   })
 })
-non_idx_n <- 2 + 0 + 2*length(db_test[!(db_test %like% "sqlite")])
+non_idx_n <- 2 + 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 # target: 2 + 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 
 # INDEX
@@ -923,6 +920,11 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 # http://stackoverflow.com/a/1139231/2490497
 # http://sqlblog.com/blogs/alexander_kuznetsov/archive/2013/11/19/learning-postgresql-replacing-top-and-apply-with-limit-and-lateral.aspx
 # http://www.postgresql.org/docs/9.3/static/queries-table-expressions.html
+last = 0
+```
+
+```{r cross_apply_show, echo=FALSE, results='asis', eval=FALSE}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## update
@@ -949,49 +951,46 @@ last = 0
 #showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
+```{r update_show, echo=FALSE, results='asis', eval=FALSE}
+invisible(showtiming(last=last)[,print_expr(.SD)])
+```
+
 ## update from
 
 ```{r update_from, echo=FALSE, eval=FALSE}
+last=0
+```
 
+```{r update_from_show, echo=FALSE, results='asis', eval=FALSE}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## order by
 
-```{r order_by, echo=FALSE, eval=FALSE}
+```{r order_by, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
-
-
-# dd[ order(-dd[,4], dd[,1]), ]
-# dd[with(dd, order(-z, b)), ]
-
-# arrange
-# arrange(DT, mpg)
-
-# DT[order()]
-
-# paste0("SELECT * FROM db ORDER BY ",paste(names(DT),collapse=',')," ASC")
 
 # NON INDEX
 
 # base
 DF = as.data.frame(DT)
-r1 <-timing(unique(DF),
-            N, paste("unique","distinct","no_index","base",sep=";"))
+r1 <-timing(DF[with(DF, order(cust_code,prod_code,geog_code,time_code,curr_code,amount,value)), ],
+            N, paste("[.data.frame-with","order","no_index","base",sep=";"))
 # dt
-r0 <- timing(unique(DT,by=names(DT)),
-             N, paste("unique","distinct","no_index","data.table",sep=";"))
+r0 <- timing(DT[order(cust_code,prod_code,geog_code,time_code,curr_code,amount,value)],
+             N, paste("[.data.table","order","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(setDT(r1),r0))
 # dplyr
 DF = as.data.frame(DT)
-r0 <- timing(distinct(DF),
-             N, paste("distinct","distinct","no_index","dplyr",sep=";"))
+r0 <- timing(arrange(DF,cust_code,prod_code,geog_code,time_code,curr_code,amount,value),
+             N, paste("arrange","order","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(r1,setDT(r0)))
 # sql
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
-  r0 = eval(bquote(timing(db("SELECT DISTINCT * FROM db",.(db_t)),
-                          N,paste("db","distinct","no_index",db_t,sep=";"))))
+  r0 = eval(bquote(timing(db(paste0("SELECT * FROM db ORDER BY ",paste(names(DT),collapse=',')),.(db_t)),
+                          N,paste("db","order","no_index",db_t,sep=";"))))
   stopifnot(data.equal.data.table(r1,r0))
   invisible()
 })
@@ -1001,20 +1000,19 @@ rm(DF)
 
 # INDEX
 setkeyv(DT,names(DT))
-r0 <- timing(unique(DT,by=names(DT)),
-             N, paste("[.data.table","distinct","index","data.table",sep=";"))
+r0 <- timing(DT[order(cust_code,prod_code,geog_code,time_code,curr_code,amount,value)],
+             N, paste("[.data.table","order","index","data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0))
 
 DT = copy(X$SALES)
-# DT = rbindlist(list(DT,DT))
 try(db("DROP TABLE db", db_test),silent = TRUE)
 db(DT,"db",db_test)
 r = lapply(db_test, function(db_t){
   db(paste0("CREATE INDEX db_idx_all ON db (",paste(names(DT),collapse=","),")"),db_t)
 })
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
-  r0 = eval(bquote(timing(db("SELECT DISTINCT * FROM db",.(db_t)),
-                          N,paste("db","distinct","index",db_t,sep=";"))))
+  r0 = eval(bquote(timing(db(paste0("SELECT * FROM db ORDER BY ",paste(names(DT),collapse=',')),.(db_t)),
+                          N,paste("db","order","index",db_t,sep=";"))))
   stopifnot(data.equal.data.table(r1,r0))
   invisible()
 })
@@ -1026,26 +1024,70 @@ last = idx_n+non_idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r order_by_show, echo=FALSE, results='asis', eval=FALSE}
+```{r order_by_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## pivot
 
-```{r pivot, echo=FALSE, eval=FALSE}
+Tested databases (sqlite, psql) does not play well with `pivot` like statements:
+```{r pivot, echo=FALSE, eval=benchmark_eval}
+DT = copy(X$SALES)
 
-# http://stackoverflow.com/questions/27786558/how-to-reshape-three-columns-of-a-data-table-into-a-printed-table
+# NON INDEX
 
-# http://marcoghislanzoni.com/blog/2014/09/01/pivot-tables-r-dplyr/
+# dt
+r1 <- timing(dcast.data.table(DT, curr_code ~ geog_code, value.var = "value", fun=sum, na.rm=TRUE),
+             N, paste("[.data.table","pivot","no_index","data.table",sep=";"))
+# dplyr
+DF = as.data.frame(DT)
+r0 <- timing(DF[,-6] %>% group_by(geog_code,curr_code) %>% summarise(value=sum(value)) %>% spread(geog_code, value) %>% group_by(curr_code) %>% summarise_each(funs(sum(.,na.rm=TRUE))), # tidyr #41 issue workaround?
+             N, paste("group_by-summarise-spread-group_by-summarise_each","pivot","no_index","tidyr",sep=";"))
+rm(DF)
+stopifnot(data.equal.data.table(r1,as.data.frame(r0)))
+# sql, none psql and sqlite handle pivot well
+# db_test[!(db_test %like% "sqlite")]
+# try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
+# db(DT,"db",db_test[!(db_test %like% "sqlite")])
+# r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
+#   r0 = eval(bquote(timing(db(paste0("SELECT * FROM db ORDER BY ",paste(names(DT),collapse=',')),.(db_t)),
+#                           N,paste("db","pivot","no_index",db_t,sep=";"))))
+#   stopifnot(data.equal.data.table(r1,r0))
+#   invisible()
+# })
+non_idx_n <- 1 + 1
+last = non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
+```
 
-# https://wiki.postgresql.org/wiki/Pivot_query
-
+```{r pivot_show, echo=FALSE, results='asis', eval=benchmark_eval}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## unpivot
 
-```{r unpivot, echo=FALSE, eval=FALSE}
+Tested databases (sqlite, psql) does not play well with `unpivot` like statements:
+```{r unpivot, echo=FALSE, eval=benchmark_eval}
+DT = copy(X$SALES)
 
+# NON INDEX
+
+# dt
+r1 <- timing(melt.data.table(DT, id.vars=c("cust_code","prod_code","geog_code","time_code","curr_code"), measure.vars=c("amount","value"), variable.name="measure"),
+             N, paste("[.data.table","unpivot","no_index","data.table",sep=";"))
+# dplyr
+DF = as.data.frame(DT)
+r0 <- timing(DF %>% gather(measure, value, -cust_code,-prod_code,-geog_code,-time_code,-curr_code),
+             N, paste("gather","unpivot","no_index","tidyr",sep=";"))
+rm(DF)
+stopifnot(data.equal.data.table(r1,as.data.frame(r0)))
+non_idx_n <- 1 + 1
+last = non_idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
+```
+
+```{r unpivot_show, echo=FALSE, results='asis', eval=benchmark_eval}
+invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## distinct
