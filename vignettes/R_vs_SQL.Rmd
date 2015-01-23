@@ -10,6 +10,7 @@ output:
 ---
 
 ```{r r_init, echo=FALSE}
+suppressPackageStartupMessages(library(dwtools))
 # presentation pkgs
 library(knitr)
 library(microbenchmark)
@@ -23,7 +24,9 @@ global_start <- proc.time()[[3]]
 
 ## Scope of the benchmark
 
-Benchmark scenarios will include (_SQL names used_):
+### Benchmark scenarios
+
+SQL names used:
 
 * WRITE (_create table as select_)
 * READ (_select \*_)
@@ -46,7 +49,7 @@ Benchmark scenarios will include (_SQL names used_):
 * MINUS
 * INTERSECT
 
-Following tools will be tested:
+### Tools tested
 
 * base
 * dplyr
@@ -57,23 +60,24 @@ Following tools will be tested:
 * in-memory sqlite
 * postgres (optional)
 
-Multiple index scenarios will be tested:
+### Multiple index scenarios
 
 * non-index
-* simple index (1,2,3)
-* complex index (1,3,5)
+* simple index
+* complex index
 
-Notes:  
-There will be no cold/hot runs, all goes in a single session, but input dataset is re-populated each time.  
-Some of the combinations will not be available, e.g. sqlite does not support *partition by*, dplyr does not support *cross join* at the time of writing.  
-Any database interface will include penalty of transferring data to/from R. Currently defined SQLite and postgres uses native db drivers via DBI, in case of comparing DBI to ODBC it would be better to benchmark off-R.  
+### Notes
+
+There will be no cold/hot runs, all goes in a single session, but input dataset is re-populated each time to have a fresh dataset for each test.  
+Some of the combinations will not be available, e.g. sqlite does not support *partition by*, sqlite and postgres does not support *pivot* and *unpivot*, base R and dplyr does not support *indices*, dplyr does not support *cross join*.  
+Any database interface will include penalty of transferring data to/from R. Currently defined SQLite and postgres uses native db drivers via DBI so the data transferring penalty is minimized. In case of comparing DBI to ODBC it would be better to benchmark off-R in databases as ODBC may be a bottleneck.  
 Only time will be measured, not the memory.
 
 ## Reproducibility notes
 
 Benchmark can be easily reproduced by running *Rmd* file used in the post generation.  
 User should update connection details to postgres db (host, port, user, pass) or exclude postgres from benchmark by commenting the `"psql"` line below in *Benchmark configuration*.  
-In case of benchmarking big data it might be desired to setup environment on amazon ec2 (up to 244GB RAM), see references at the end of document.
+In case of benchmarking big data it might be desired to setup environment on amazon ec2 (up to 244GB RAM), see references at the end of document for amazon EC2 reproduction script on clean Ubuntu AMI.
 
 ## Contribution
 
@@ -85,7 +89,7 @@ PR must be runable from within R + packages, any external dependency tool must b
 # Benchmark configuration
 
 ```{r N}
-N = 1e6
+N = 1e5
 ```
 
 ## Database setup
@@ -572,29 +576,31 @@ r0 = timing(DF %>% group_by(prod_code, geog_code) %>% mutate_each(funs(sum), rp_
             N, paste("select-group_by-mutate_each","partition_aggr3","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r3),setDT(as.data.frame(r0))))
 rm(DF,r0)
-
-DT = copy(X$SALES)
-try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
-db(DT,"db",db_test[!(db_test %like% "sqlite")])
-select_sql <- c(
-  paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_value FROM db"),
-  paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_value FROM db"),
-  paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_value FROM db")
-)
-# exclude sqlite
-r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
-  p = lapply(1:length(select_sql), function(i){
-    r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_aggr",i),"no_index",db_t,sep=";"))))
-    rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
-    if(!(data.equal.data.table(rr,r0))){
-      # rounding issues
-      rr[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
-      r0[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
-    }
-    stopifnot(data.equal.data.table(rr,r0))
-    invisible()
+if(length(db_test[!(db_test %like% "sqlite")])>0){
+  DT = copy(X$SALES)
+  try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
+  db(DT,"db",db_test[!(db_test %like% "sqlite")])
+  select_sql <- c(
+    paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_value FROM db"),
+    paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_value FROM db"),
+    paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_value FROM db")
+  )
+  # exclude sqlite
+  r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
+    p = lapply(1:length(select_sql), function(i){
+      r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_aggr",i),"no_index",db_t,sep=";"))))
+      rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
+      if(!(data.equal.data.table(rr,r0))){
+        # rounding issues
+        rr[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+        r0[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+      }
+      stopifnot(data.equal.data.table(rr,r0))
+      invisible()
+    })
   })
-})
+}
+
 non_idx_n <- 3 + 3 + 3*length(db_test[!(db_test %like% "sqlite")])
 
 # INDEX
@@ -606,34 +612,35 @@ r0 = timing(DT[,c("grp_amount","grp_value") := lapply(.SD, sum), by = key(DT), .
 stopifnot(data.equal.data.table(r1,r0))
 rm(r0,DT)
 
-DT = copy(X$SALES)
-try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
-db(DT,"db",db_test[!(db_test %like% "sqlite")])
-create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
-r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){
-  db(create_index_sql,db_t)
-})
-select_sql <- c(
-  paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_value FROM db"),
-  paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_value FROM db"),
-  paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_value FROM db")
-)
-r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
-  p = lapply(1:length(select_sql), function(i){
-    r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_aggr",i),"index",db_t,sep=";"))))
-    rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
-    if(!(data.equal.data.table(rr,r0))){
-      # rounding issues
-      rr[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
-      r0[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
-    }
-    stopifnot(data.equal.data.table(rr,r0))
-    invisible()
+if(length(db_test[!(db_test %like% "sqlite")])>0){
+  DT = copy(X$SALES)
+  try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
+  db(DT,"db",db_test[!(db_test %like% "sqlite")])
+  create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
+  r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){
+    db(create_index_sql,db_t)
   })
-})
+  select_sql <- c(
+    paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[1]]),collapse=","),") as grp_value FROM db"),
+    paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[2]]),collapse=","),") as grp_value FROM db"),
+    paste0("SELECT *, sum(amount) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_amount, sum(value) over (partition by ",paste(names(W[[3]]),collapse=","),") as grp_value FROM db")
+  )
+  r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
+    p = lapply(1:length(select_sql), function(i){
+      r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_aggr",i),"index",db_t,sep=";"))))
+      rr = if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")
+      if(!(data.equal.data.table(rr,r0))){
+        # rounding issues
+        rr[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+        r0[,`:=`(value=trunc(value),grp_amount=trunc(grp_amount),grp_value=trunc(grp_value))]
+      }
+      stopifnot(data.equal.data.table(rr,r0))
+      invisible()
+    })
+  })
+  rm(r1,r2,r3,r)
+}
 idx_n <- 1 + 3 * length(db_test[!(db_test %like% "sqlite")])
-
-rm(r1,r2,r3,r)
 
 last = non_idx_n + idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
@@ -674,26 +681,32 @@ r0 = timing(DF %>% group_by(cust_code) %>% mutate(time_code_lead_1 = lead(order_
 stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
 rm(DF,r0)
 # sql
-DT = copy(DTunq)
-try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
-db(DT,"db",db_test[!(db_test %like% "sqlite")])
-select_sql <- c(
-  paste0("SELECT *, lag(value,1) over (partition by cust_code order by time_code asc) as value_lag_1 FROM db"),
-  paste0("SELECT *, lead(time_code,1) over (partition by cust_code order by time_code asc) as time_code_lead_1, lead(value,1) over (partition by cust_code order by time_code asc) as value_lead_1 FROM db")
-)
-# exclude sqlite
-r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
-  p = lapply(1:length(select_sql), function(i){
-    r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_non_aggr",i),"no_index",db_t,sep=";"))))
-    stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
-    #if(!data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0)) browser() # warning("db to dt test failed") #
-    invisible()
+if(length(db_test[!(db_test %like% "sqlite")])>0){
+  DT = copy(DTunq)
+  try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
+  db(DT,"db",db_test[!(db_test %like% "sqlite")])
+  select_sql <- c(
+    paste0("SELECT *, lag(value,1) over (partition by cust_code order by time_code asc) as value_lag_1 FROM db"),
+    paste0("SELECT *, lead(time_code,1) over (partition by cust_code order by time_code asc) as time_code_lead_1, lead(value,1) over (partition by cust_code order by time_code asc) as value_lead_1 FROM db")
+  )
+  # exclude sqlite
+  r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
+    p = lapply(1:length(select_sql), function(i){
+      r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_non_aggr",i),"no_index",db_t,sep=";"))))
+      stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
+      #if(!data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0)) browser() # warning("db to dt test failed") #
+      invisible()
+    })
   })
-})
+}
 non_idx_n <- 2 + 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 # target: 2 + 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 
 # INDEX
+
+# TO DO partition by non agr
+# [ ] add index
+
 idx_n = 0
 # target: 2 + 0 + 2*length(db_test[!(db_test %like% "sqlite")])
 
@@ -917,51 +930,123 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 ## cross apply
 
 ```{r cross_apply, echo=FALSE, eval=FALSE}
+# TO DO
+# [ ] cross apply dplyr, data.table, postgres
+
 # http://stackoverflow.com/a/1139231/2490497
 # http://sqlblog.com/blogs/alexander_kuznetsov/archive/2013/11/19/learning-postgresql-replacing-top-and-apply-with-limit-and-lateral.aspx
 # http://www.postgresql.org/docs/9.3/static/queries-table-expressions.html
-last = 0
+#last = 0
 ```
 
 ```{r cross_apply_show, echo=FALSE, results='asis', eval=FALSE}
-invisible(showtiming(last=last)[,print_expr(.SD)])
+#invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## update
 
-```{r update, echo=FALSE, eval=FALSE}
+```{r update, echo=FALSE, eval=benchmark_eval}
+DT = copy(X$SALES)
+upd_cust_code = DT[,sample(cust_code,5,FALSE)]
 
 # NO INDEX
 
-# base
+DF = as.data.frame(copy(X$SALES))
+r1 = timing(DF[DF$cust_code %in% upd_cust_code,"value"] <- 0,
+            N, paste("<-","update","no_index","base",sep=";"))
 
-# mutate
+DF2 = as.data.frame(copy(X$SALES))
+r0 = timing(DF2 <- mutate(DF2, value = ifelse(cust_code %in% upd_cust_code, 0, value)),
+            N, paste("mutate","update","no_index","dplyr",sep=";"))
+stopifnot(data.equal.data.table(setDT(DF),setDT(as.data.frame(DF2))))
 
-# :=
+r0 = timing(DT[cust_code %in% upd_cust_code, value := 0],
+            N, paste(":=","update","no_index","data.table",sep=";"))
+stopifnot(data.equal.data.table(DF,DT))
 
-# UPDATE db SET 
+DT = copy(X$SALES)
+try(db("DROP TABLE db", db_test),silent = TRUE)
+db(DT,"db",db_test)
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  rUpd = eval(bquote(timing(db(paste0("UPDATE db SET value = 0 WHERE cust_code IN ('",paste(upd_cust_code,collapse="','"),"')"),.(db_t)),
+                            N,paste("db","update","no_index",db_t,sep=";"))))
+  rDB = db("SELECT * FROM db",db_t)
+  stopifnot(data.equal.data.table(rDB,r0))
+  invisible()
+})
+non_idx_n <- 1 + 1 + 1 + 1*length(db_test)
 
 # INDEX
 
-# :=
+DT = copy(X$SALES)
+setkey(DT,cust_code)
+r0 = timing(DT[.(upd_cust_code), value := 0],
+            N, paste(":=","update","index","data.table",sep=";"))
+stopifnot(data.equal.data.table(DF,DT))
 
-# UPDATE db SET
+DT = copy(X$SALES)
+try(db("DROP TABLE db", db_test),silent = TRUE)
+db(DT,"db",db_test)
+r = lapply(db_test, function(db_t){
+  db("CREATE INDEX db_idx_cust_code ON db (cust_code)",db_t)
+})
+r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  rUpd = eval(bquote(timing(db(paste0("UPDATE db SET value = 0 WHERE cust_code IN ('",paste(upd_cust_code,collapse="','"),"')"),.(db_t)),
+                            N,paste("db","update","index",db_t,sep=";"))))
+  rDB = db("SELECT * FROM db",db_t)
+  stopifnot(data.equal.data.table(rDB,r0))
+  invisible()
+})
+idx_n <- 1 + 1*length(db_test)
 
-last = 0
-#showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
+rm(DT,DF,r1,r0,r)
+
+last = non_idx_n+idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r update_show, echo=FALSE, results='asis', eval=FALSE}
+```{r update_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
 ## update from
 
-```{r update_from, echo=FALSE, eval=FALSE}
-last=0
+```{r update_from, echo=FALSE, eval=benchmark_eval}
+# TO DO
+# [x] add data.table
+# [ ] add dplyr
+# [ ] add sqlite?, postgres
+
+# NO INDEX
+
+DT = copy(X$SALES)
+REF = copy(X$PRODUCT)
+REF[,c("prod_name","prod_group_code","prod_group_name","prod_family_code", "prod_family_name"):=NULL][,prod_value_mp := rnorm(.N,1,sd=0.10)]
+REF_back = copy(REF)
+
+r1 = timing(setkey(DT,prod_code)[setkey(REF,prod_code), value := value * prod_value_mp],
+            N, paste("setkey-[.data.table-:=","update_from","no_index","data.table",sep=";"))
+
+non_idx_n = 1
+
+# INDEX
+
+DT = copy(X$SALES)
+REF = copy(REF_back)
+
+setkey(DT,prod_code)
+setkey(REF,prod_code)
+r0 = timing(DT[REF, value := value * prod_value_mp],
+            N, paste("[.data.table-:=","update_from","index","data.table",sep=";"))
+stopifnot(data.equal.data.table(r1,r0))
+
+idx_n = 1
+
+last=non_idx_n+idx_n
+showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
 ```
 
-```{r update_from_show, echo=FALSE, results='asis', eval=FALSE}
+```{r update_from_show, echo=FALSE, results='asis', eval=benchmark_eval}
 invisible(showtiming(last=last)[,print_expr(.SD)])
 ```
 
@@ -1187,16 +1272,14 @@ r0 <- timing(union(DF1,DF2),
 stopifnot(data.equal.data.table(r1,setDT(r0)))
 rm(DF1,DF2)
 # sql
-try(db("DROP TABLE db1", db_test),silent = TRUE)
-try(db("DROP TABLE db2", db_test),silent = TRUE)
-db(DT1,"db1",db_test)
-db(DT2,"db2",db_test)
+
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
+  try(db("DROP TABLE db1", db_t),silent = TRUE)
+  try(db("DROP TABLE db2", db_t),silent = TRUE)
+  db(DT1,"db1",db_t)
+  db(DT2,"db2",db_t)
   r0 = eval(bquote(timing(db("SELECT * FROM db1 UNION SELECT * FROM db2",.(db_t)),
                           N,paste("db","union","no_index",db_t,sep=";"))))
-  #if(!data.equal.data.table(r1,r0)) browser()
-  #data.table:::setdiff_(r1,r0)
-  #data.table:::setdiff_(r0,r1)
   stopifnot(data.equal.data.table(r1,r0))
   invisible()
 })
@@ -1402,8 +1485,8 @@ if(file.exists("sqlite.db")) invisible(file.remove("sqlite.db"))
 
 Update this section in case of publishing reproduction of benchmark.
 ```{r r_version, echo=FALSE}
-cat("Intel(R) Core(TM)2 Duo CPU T6600 @ 2.20GHz\n")
-cat("4GB memory @ 800 MHz\n")
+cat("\n")
+cat("\n")
 cat(R.version$version.string,"\n",sep="")
 cat(R.version$platform,"\n",sep="")
 ```
@@ -1448,8 +1531,37 @@ And good web books:
 * [Advanced R](http://adv-r.had.co.nz/)
 * [Ramarro: R for Developers](http://www.quantide.com/R/r-training/r-web-books/ramarro-r-for-developers/)
 
-  
-  
+Reproduction script for amazon EC2 (no postgres):
+
+```
+ssh -i auth_key.pem ubuntu@amazon.instance.ip
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
+sudo add-apt-repository 'deb  http://cran.stat.ucla.edu/bin/linux/ubuntu trusty/'
+sudo apt-get update
+sudo apt-get -y install r-base-core
+sudo apt-get -y install libcurl4-openssl-dev
+sudo apt-get -y install libcurl4-gnutls-dev
+sudo apt-get -y install htop
+sudo apt-get -y install git
+# RStudio Server # port 8787 - open only for ip
+sudo apt-get -y install gdebi-core libapparmor1
+# use the latest link from: http://www.rstudio.com/products/rstudio/download-server/
+wget http://download2.rstudio.org/rstudio-server-0.98.1091-amd64.deb
+sudo gdebi -q -n rstudio-server-0.98.1091-amd64.deb
+# add RStudio user
+sudo useradd -m -p $(openssl passwd -1 rstudio_user_pass) rstudio_user
+
+# open in client web browser
+http://amazon.instance.ip:8787/
+# log in to RStudio
+install.packages(c("RCurl","devtools","knitr","microbenchmark","rmarkdown","DBI","dplyr","tidyr","RSQLite"), repos="http://cran.stat.ucla.edu")
+
+# install_github, might failed due to github calls limit on ec2, in such case git clone manually from github
+library(devtools)
+install_github("jangorecki/dwtools")
+install_github("Rdatatable/data.table")
+```
+
 ```{r total_time, echo=FALSE, results='asis'}
 cat("Document produced in ",round(proc.time()[[3]] - global_start,2)," seconds.\n",sep="")
 ```
