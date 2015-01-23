@@ -1,6 +1,6 @@
 # dwtools
 
-**Current version: 0.8.2**  
+**Current version: 0.8.3**  
 
 Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization, normalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
@@ -66,6 +66,7 @@ In ETL terms where `data.table` serves as **Transformation** layer, the dwtools 
 ```r
 # setup db connections
 library(RSQLite) # install.packages("RSQLite")
+#> Loading required package: DBI
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
@@ -178,11 +179,11 @@ DT[CJI(IDX,TRUE,323,"OR")]
 ## Other functions
 A brief summary of other functions in the package.  
 * `timing` - measure time, nrow in/out, optionally save to db
-* `as.xts.data.table` - wrapper method for conversion of data.table to xts and reverse
 * `data.equal.data.table` - check if two DT equal, ignore row/col order
 * `vwap` - aggregate tick trades data to OHLC including VWAP
 * `pkgsVersion` - handy wrapper to compare packages version across libraries
 * `anonymize` - anonymization by hashing sensitive data
+* `sql.dt` - query data.table using data.table syntax but SQL args and sequence
 
 ## License
 GPL-3.  
