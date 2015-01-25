@@ -89,8 +89,9 @@ PR must be runable from within R + packages, any external dependency tool must b
 
 # Benchmark configuration
 
+Currently supported benchmark volumes are 1e3, 1e5, 1e6, 1e7.
 ```{r N}
-N = 1e3
+N = 1e5
 ```
 
 ```{r benchmark_default_eval, echo=FALSE}
@@ -100,7 +101,7 @@ benchmark_eval = TRUE # useful while dev, to eval only single chunk
 ## Database setup
 
 Setup databases to test (comment `"psql"` line to exclude postgres benchmark):
-```{r benchmar_setup, echo=TRUE}
+```{r benchmar_db_setup, echo=TRUE}
 # benchmark dbs
 db_test = c("sqlite","sqlite_memory")
 # optional dbs
@@ -166,9 +167,11 @@ showtiming <- function(last=1L,trunc_expr=FALSE){
 }
 
 print_expr <- function(x){
-  x[test==min(test)][order(tool,scenario),cat(tool," (",scenario,"): \x60",expr,"\x60<br>",sep=""), by=list(tool,scenario)]
+  x[test==min(test) # filter only to first test in each batch
+    ][order(tool,scenario),cat(tool," (",scenario,"): \x60",expr,"\x60<br>",sep=""), by=list(tool,scenario)]
 }
 plot_timing <- function(x){
+  # TO DO
   invisible()
 }
 
@@ -681,40 +684,65 @@ DF = as.data.frame(copy(DTunq))
 r0 = timing(DF %>% group_by(cust_code) %>% mutate(value_lag_1 = lag(order_by = time_code, value)),
             N, paste("group_by-mutate-lag","partition_non_aggr1","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(r1,setDT(as.data.frame(r0))))
-
 r0 = timing(DF %>% group_by(cust_code) %>% mutate(time_code_lead_1 = lead(order_by = time_code, time_code), value_lead_1 = lead(order_by = time_code, value)),
             N, paste("select-group_by-mutate_each","partition_non_aggr2","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
 rm(DF,r0)
+
 # sql
 if(length(db_test[!(db_test %like% "sqlite")])>0){
   DT = copy(DTunq)
-  try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
-  db(DT,"db",db_test[!(db_test %like% "sqlite")])
   select_sql <- c(
     paste0("SELECT *, lag(value,1) over (partition by cust_code order by time_code asc) as value_lag_1 FROM db"),
     paste0("SELECT *, lead(time_code,1) over (partition by cust_code order by time_code asc) as time_code_lead_1, lead(value,1) over (partition by cust_code order by time_code asc) as value_lead_1 FROM db")
   )
   # exclude sqlite
   r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
+    try(db("DROP TABLE db",db_t),silent = TRUE)
+    db(DT,"db",db_t)
     p = lapply(1:length(select_sql), function(i){
       r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_non_aggr",i),"no_index",db_t,sep=";"))))
       stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
-      #if(!data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0)) browser() # warning("db to dt test failed") #
       invisible()
     })
   })
 }
 non_idx_n <- 2 + 2 + 2*length(db_test[!(db_test %like% "sqlite")])
-# target: 2 + 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 
 # INDEX
 
-# TO DO partition by non agr
-# [ ] add index
+DT = copy(DTunq)
+setkey(DT,time_code,cust_code)
+r0 = timing(DT[, c("value_lag_1") := shift(value, n=1, fill=NA, type="lag"), by="cust_code"],
+            N, paste("[.data.table","partition_non_aggr1","index","data.table",sep=";"))
+stopifnot(data.equal.data.table(r1,r0))
+DT = copy(DTunq)
+setkey(DT,time_code,cust_code)
+r0 = timing(DT[, c(paste(c("time_code","value"),"lead_1",sep="_")) := shift(.SD, n=1, fill=NA, type="lead"), by="cust_code", .SDcols=c("time_code","value")],
+            N, paste("[.data.table","partition_non_aggr2","index","data.table",sep=";"))
+stopifnot(data.equal.data.table(r2,r0))
 
-idx_n = 0
-# target: 2 + 0 + 2*length(db_test[!(db_test %like% "sqlite")])
+# sql
+if(length(db_test[!(db_test %like% "sqlite")])>0){
+  DT = copy(DTunq)
+  select_sql <- c(
+    paste0("SELECT *, lag(value,1) over (partition by cust_code order by time_code asc) as value_lag_1 FROM db"),
+    paste0("SELECT *, lead(time_code,1) over (partition by cust_code order by time_code asc) as time_code_lead_1, lead(value,1) over (partition by cust_code order by time_code asc) as value_lead_1 FROM db")
+  )
+  # exclude sqlite
+  r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
+    try(db("DROP TABLE db",db_t),silent = TRUE)
+    db(DT,"db",db_t)
+    db("CREATE INDEX db_idx_cust_code_time_code ON db (cust_code,time_code)",db_t)
+    p = lapply(1:length(select_sql), function(i){
+      r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("db",paste0("partition_non_aggr",i),"index",db_t,sep=";"))))
+      stopifnot(data.equal.data.table({if(i==1L) r1 else if(i==2L) r2 else if(i==3L) r3 else stop("three filters defined")},r0))
+      invisible()
+    })
+  })
+}
+
+idx_n = 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 
 last = non_idx_n + idx_n
 showtiming(last=last)[,kable(.SD),.SDcols=-c("expr")]
@@ -879,7 +907,6 @@ if(N==1e5){
 if(N==1e6){
   nr <- c(1000,1000)
 }
-# taken from  package
 
 # NON INDEX
 
@@ -1027,7 +1054,7 @@ r1 = timing(DF[DF$cust_code %in% upd_cust_code,"value"] <- 0,
             N, paste("<-","update","no_index","base",sep=";"))
 
 DF2 = as.data.frame(copy(X$SALES))
-r0 = timing(DF2 <- mutate(DF2, value = ifelse(cust_code %in% upd_cust_code, 0, value)),
+r0 = timing(DF2 <- mutate(DF2, value = replace(value, cust_code %in% upd_cust_code, 0)),
             N, paste("mutate","update","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(setDT(DF),setDT(as.data.frame(DF2))))
 
@@ -1087,6 +1114,7 @@ SQLite workaround for join and update do not scale enough.
 
 DT = copy(X$SALES)
 REF = copy(X$PRODUCT)
+set.seed(1)
 REF[,prod_value_mp := rnorm(.N,1,sd=0.10)]
 REF_back = copy(REF)
 
@@ -1099,6 +1127,7 @@ r0 = timing(DF <- left_join(DF, REF, by = "prod_code") %>% mutate(value = value 
             N, paste("left_join-mutate-select","update_from","no_index","dplyr",sep=";"))
 stopifnot(data.equal.data.table(r1,setDT(as.data.frame(DF))))
 rm(r0)
+# tried prefiltering cols in REF but it is slower: DF <- left_join(DF, select(REF,prod_code,prod_value_mp), by = "prod_code") %>% mutate(value = value * prod_value_mp) %>% select(-prod_value_mp)
 
 if(length(db_test[!(db_test %like% "sqlite")])>0){
   DT = copy(X$SALES)
@@ -1241,10 +1270,13 @@ r1 <- timing(dcast.data.table(DT, curr_code ~ geog_code, value.var = "value", fu
              N, paste("[.data.table","pivot","no_index","data.table",sep=";"))
 # dplyr
 DF = as.data.frame(DT)
-r0 <- timing(DF[,-6] %>% group_by(geog_code,curr_code) %>% summarise(value=sum(value)) %>% spread(geog_code, value) %>% group_by(curr_code) %>% summarise_each(funs(sum(.,na.rm=TRUE))), # tidyr #41 issue workaround?
-             N, paste("group_by-summarise-spread-group_by-summarise_each","pivot","no_index","tidyr",sep=";"))
+# this should looks like: select(DF,-amount) %>% group_by(geog_code, curr_code) %>% summarise(value = sum(value)) %>% spread(geog_code, value)
+# tidyr#41 workaround
+r0 <- timing(select(DF,-amount) %>% group_by(geog_code,curr_code) %>% summarise(value=sum(value)) %>% spread(geog_code, value) %>% group_by(curr_code) %>% summarise_each(funs(sum(.,na.rm=TRUE))),
+             N, paste("select-group_by-summarise-spread-group_by-summarise_each","pivot","no_index","tidyr",sep=";"))
 rm(DF)
-stopifnot(data.equal.data.table(r1,as.data.frame(r0)))
+stopifnot(data.equal.data.table(r1,setDT(as.data.frame(r0))))
+
 # sql, none psql and sqlite handle pivot well
 non_idx_n <- 1 + 1
 last = non_idx_n
@@ -1604,12 +1636,18 @@ cat(R.version$platform,"\n",sep="")
 ```{r benchmark_timings, echo=FALSE}
 # query benchmark results only from current session
 saveRDS(get.timing(FALSE),paste0("benchmark_",N,"_",as.integer(Sys.time()),".rds")) # store logs for easier merging multiple N timings
-#kable(get.timing(80L, last=15))
 ```
+
+TO DO some overview plots for multiple tests, yet single N:
+
+- data.table vs mean
+- dplyr vs mean
+- sqlite vs mean
+- ?
 
 ## Conclusions
 
-?
+TO DO summary
 
 ## References
 
@@ -1658,10 +1696,10 @@ wget http://download2.rstudio.org/rstudio-server-0.98.1091-amd64.deb # get lates
 sudo gdebi -q -n rstudio-server-0.98.1091-amd64.deb
 sudo useradd -m -p $(openssl passwd -1 rstudio_user_pass) rstudio_user # add RStudio user
 ```
-* Open RStudio in the your local web browser: `http://amazon.instance.ip:8787/`
+* Open RStudio in your local web browser: `http://amazon.instance.ip:8787/`
 * Install R packages:
 ```{r ec2_install_pkgs, echo=TRUE, eval=FALSE}
-install.packages(c("RCurl","devtools","knitr","microbenchmark","rmarkdown","DBI","dplyr","tidyr","RSQLite"), repos="http://cran.stat.ucla.edu")
+install.packages(c("RCurl","devtools","knitr","microbenchmark","rmarkdown","DBI","dplyr","tidyr","RSQLite","optiRum"), repos="http://cran.stat.ucla.edu")
 library(devtools)
 install_github("Rdatatable/data.table")
 install_github("jangorecki/dwtools")
