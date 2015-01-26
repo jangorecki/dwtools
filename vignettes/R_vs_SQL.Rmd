@@ -10,6 +10,9 @@ output:
 ---
 
 ```{r r_init, echo=FALSE}
+# TO DO
+# [ ] additional grouping tag environment: R/DB/ETL
+# [ ] add information about the filters and groupings above the timing table, to have a picture what where1, group1, etc. are.
 suppressPackageStartupMessages(library(dwtools))
 # presentation pkgs
 library(knitr)
@@ -105,7 +108,7 @@ Setup databases to test (comment `"psql"` line to exclude postgres benchmark):
 # benchmark dbs
 db_test = c("sqlite","sqlite_memory")
 # optional dbs
-db_test <- c(db_test,"psql")
+#db_test <- c(db_test,"psql")
 ```
 
 ## Packages used
@@ -1317,7 +1320,6 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 
 ```{r distinct, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
-# DT = rbindlist(list(DT,DT))
 
 # NON INDEX
 
@@ -1379,7 +1381,7 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 
 ```{r union, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
-# DT = rbindlist(list(DT,DT))
+
 set.seed(1)
 i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
 i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
@@ -1401,13 +1403,12 @@ r1 <-timing(unique(rbind(DF1,DF2)),
 r0 <- timing(unique(rbindlist(list(DT1,DT2))),
              N, paste("unique-rbindlist","union","no_index","data.table",sep=";"))
 stopifnot(data.equal.data.table(setDT(r1),r0))
-# dplyr
-r0 <- timing(union(DF1,DF2),
+# dplyr, performance issue reported: dplyr/issues/924, below is workaround
+r0 <- timing(unique(bind_rows(DF1,DF2)),
              N, paste("union","union","no_index","dplyr",sep=";"))
-stopifnot(data.equal.data.table(r1,setDT(r0)))
+stopifnot(data.equal.data.table(r1,setDT(as.data.frame(r0))))
 rm(DF1,DF2)
 # sql
-
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   try(db("DROP TABLE db1", db_t),silent = TRUE)
   try(db("DROP TABLE db2", db_t),silent = TRUE)
@@ -1434,7 +1435,7 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 
 ```{r union_all, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
-# DT = rbindlist(list(DT,DT))
+
 DT1 = DT[1:(nrow(DT)/2)]
 DT2 = DT[((nrow(DT)/2)+1):nrow(DT)]
 rm(DT)
@@ -1482,7 +1483,7 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 
 ```{r minus, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
-# DT = rbindlist(list(DT,DT))
+
 set.seed(1)
 i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
 i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
@@ -1536,7 +1537,7 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 
 ```{r intersect, echo=FALSE, eval=benchmark_eval}
 DT = copy(X$SALES)
-# DT = rbindlist(list(DT,DT))
+
 set.seed(1)
 i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
 i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
