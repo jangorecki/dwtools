@@ -1,6 +1,6 @@
 shinyUI(
   navbarPage(
-    "shinyDW",
+    "shinyBI",
     tabPanel("Hierarchy browser",
              fluidPage(
                sidebarLayout(
@@ -17,7 +17,7 @@ shinyUI(
                  sidebarPanel(width = 3,
                               selectInput("numcols_input", label="measures", choices=names(numcols)[numcols], selected=names(numcols)[numcols], multiple=TRUE),
                               selectInput("by_input", label="groups", choices=names(numcols)[!numcols], selected=NULL, multiple=TRUE),
-                              selectInput("aggr_fun_input", label="aggregate function", choices=c("sum","mean","median","min","max","length"), selected="sum", multiple=FALSE)),
+                              selectInput("aggr_fun_input", label="aggregate function", choices=list("sum"=sum,"avg"=mean,"median"=median,"min"=min,"max"=max,"count"=length,"count distinct"=uniqueN), selected="sum", multiple=FALSE)),
                  mainPanel(width = 9,
                            dataTableOutput("dt"))
                )

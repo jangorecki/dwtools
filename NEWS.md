@@ -1,11 +1,12 @@
 # dwtools 0.8.3
 
-- [ ] R vs SQL benchmark vignette
+- [ ] *R vs SQL* benchmark vignette
 - [x] new get.timing(), trunc.timing() functions for in-memory logs
 - [x] change in timing (non-db) approach
   - [x] no more 'timing' attribute
   - [x] a lot of code simplification
-- [ ] shinyDW hierarchy browsing using
+- [x] shinyDW renamed to shinyBI
+- [ ] shinyBI hierarchy browsing using
   - [x] denormalized data
   - [ ] star schema query using joinbyv
   - [ ] db denormalized
@@ -17,7 +18,7 @@
 
 # dwtools 0.8.2
 
-- [x] shinyDW supports build hierarchy
+- [x] shinyBI (previously *shinyDW*) supports build hierarchy
 - [x] build hierarchy
 - [x] data.equal.data.table
 - [x] anonymize

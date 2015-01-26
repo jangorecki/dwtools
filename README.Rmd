@@ -15,9 +15,9 @@ devtools::install_github("jangorecki/dwtools")
 ```
 
 ## Core functions
-```{r init, results='hide'}
+```{r init, echo=FALSE, results='hide'}
 suppressPackageStartupMessages(library(dwtools))
-options("dwtools.verbose" = 0) # 1+ for status message
+options("dwtools.verbose" = 0)
 ```
 
 ### dw.populate
@@ -99,6 +99,16 @@ names(DT)
 dw <- build_hierarchy(DT, factname="fact_sales")
 sapply(dw$tables,ncol)
 sapply(dw$tables,nrow)
+```
+
+```{r shinyBI_clean, echo=FALSE}
+suppressWarnings(rm(x,dw))
+```
+
+### shinyBI
+Early version of hierarchical data BI app.
+```{r shinyBI, eval=FALSE}
+shiny::runApp(system.file("shinyBI", package="dwtools"))
 ```
 
 ### idxv

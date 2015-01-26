@@ -1,7 +1,7 @@
 Package: dwtools
 Type: Package
 Title: Data Warehouse related functions.
-Version: 0.8.3
+Version: 0.8.3.5
 Date: 2015-01-05
 Author: Jan Gorecki
 Maintainer: Jan Gorecki <J.Gorecki@wit.edu.plt>

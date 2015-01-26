@@ -3,6 +3,10 @@ limitlen <- function(x, len=getOption("dwtools.limitlen",25L)){
   else x
 }
 
+count <- length
+`count distinct` <- uniqueN
+avg <- mean
+
 shinyServer(function(input, output, session){
   
   output$dt <- renderDataTable(query_dt(), options = list(pageLength = 5, lengthMenu = c(5,10,15,100))) # full raw dataset for manual manipulation in shiny
@@ -35,5 +39,5 @@ shinyServer(function(input, output, session){
       updateSelectInput(session, "by_input", selected = sapply(sel, function(sel) lapply(sel, names)))
     })
   })
-  output$aggr_dt <- renderDataTable(eval(query_dt()), options = list(pageLength = 5, lengthMenu = c(5,10,15,100)))
+  output$aggr_dt <- renderDataTable(eval(query_dt()), options = list(pageLength = 5, lengthMenu = c(5,10,15,50,100)))
 })

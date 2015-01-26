@@ -70,7 +70,7 @@ get.timing(FALSE,last=2L)[,{cat(paste0("\\n# ",tag,"\\n",expr),"\\n",sep=""); .S
 ## shiny app to browse model, will use following vars in Global Env:
 # x - denormalized table
 # dw - normalization results
-if(interactive()) shiny::runApp(system.file("shinyDW", package="dwtools"))
+if(interactive()) shiny::runApp(system.file("shinyBI", package="dwtools"))
 
 ## deploy to db
 
