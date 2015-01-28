@@ -1,6 +1,6 @@
 # dwtools
 
-**Current version: 0.8.3**  
+**Current version: 0.8.3.5**  
 
 Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization, normalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
@@ -15,8 +15,7 @@ devtools::install_github("jangorecki/dwtools")
 ## Core functions
 
 ```r
-suppressPackageStartupMessages(library(dwtools))
-options("dwtools.verbose" = 0) # 1+ for status message
+library(dwtools)
 ```
 
 ### dw.populate
@@ -66,7 +65,6 @@ In ETL terms where `data.table` serves as **Transformation** layer, the dwtools 
 ```r
 # setup db connections
 library(RSQLite) # install.packages("RSQLite")
-#> Loading required package: DBI
 sqlite1 = list(drvName="SQLite",dbname="sqlite1.db",conn=dbConnect(SQLite(), dbname="sqlite1.db"))
 options("dwtools.db.conns" = list(sqlite1=sqlite1, csv1=list(drvName="csv")))
 
@@ -151,6 +149,15 @@ sapply(dw$tables,nrow)
 #>            50            49           100          1000          1826 
 #>    fact_sales 
 #>        100000
+```
+
+
+
+### shinyBI
+Early version of hierarchical data BI app.
+
+```r
+shiny::runApp(system.file("shinyBI", package="dwtools"))
 ```
 
 ### idxv

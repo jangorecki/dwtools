@@ -3,7 +3,7 @@
 knitr::opts_chunk$set(collapse=TRUE,comment="#>",cache=FALSE)
 # knitr::knit("dwtools/README.Rmd","dwtools/README.md")
 ```
-**Current version: 0.8.3**  
+**Current version: 0.8.3.5**  
 
 Data Warehouse related functions. Handy wrappers for extraction, loading, denormalization, normalization. Data exploration tools. Additionally [data.table](https://github.com/Rdatatable/data.table) *Nth key* feature, timing+logging and more.  
 See below for core functions in the package.  
@@ -15,9 +15,8 @@ devtools::install_github("jangorecki/dwtools")
 ```
 
 ## Core functions
-```{r init, echo=FALSE, results='hide'}
-suppressPackageStartupMessages(library(dwtools))
-options("dwtools.verbose" = 0)
+```{r init, results='hide'}
+library(dwtools)
 ```
 
 ### dw.populate
