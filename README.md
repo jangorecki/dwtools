@@ -154,7 +154,7 @@ sapply(dw$tables,nrow)
 
 
 ### shinyBI
-Early version of hierarchical data BI app.
+Early version of hierarchical data BI app. You can preview [live demo](https://jangorecki.shinyapps.io/shinyBI/) of the app, 100k rows, free but slow hosting.
 
 ```r
 shiny::runApp(system.file("shinyBI", package="dwtools"))
