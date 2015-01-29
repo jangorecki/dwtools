@@ -14,10 +14,6 @@ labelnames <- function(x) label(names(x))
 dims <- names(dw$tables)[-length(dw$tables)]
 fact <- names(dw$tables)[length(dw$tables)]
 
-textInputRow <- function (inputId, label, value = ""){
-  div(style="display:inline-block", tags$label(label, `for` = inputId), tags$input(id = inputId, type = "text", value = value,class="input-small"))
-}
-
 ## dev
 # [ ] 
 # [ ] query on shinyBI on normalized and denormalized data, control type by checkbox, query interface in shinyTree the same for both
