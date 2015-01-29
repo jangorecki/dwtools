@@ -32,6 +32,7 @@ common_words <- function(x, split="_"){
 #' @param x data.table source dataset.
 #' @param factname character, default \emph{fact}.
 #' @param dimnames character currently only \emph{auto} supported, default. Dimension names will be created based on the common words in the fields which forms the dimension.
+#' @param setkey logical if return tables with keys.
 #' @param deploy logical, \emph{TRUE} will \strong{overwrite} the data in the target tables in connection \emph{db.conn.name}.
 #' @param db.conn.name character deploy db connection name.
 #' @param .db.conns list of connections uniquely named. See \link{db} function.
@@ -47,7 +48,7 @@ common_words <- function(x, split="_"){
 #' @export
 #' @aliases dw.explore
 #' @example tests/example-build_hierarchy.R
-build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
+build_hierarchy <- function(x, factname = "fact", dimnames = "auto", setkey = TRUE,
                             deploy = FALSE,
                             db.conn.name,
                             .db.conns = getOption("dwtools.conns"),
@@ -107,10 +108,13 @@ build_hierarchy <- function(x, factname = "fact", dimnames = "auto",
     for(fki in 1:length(fk_dim_names)){ # fki <- 1#:length(fk_dim_names)
       dim_name <- fk_dim_names[fki]
       dw[["tables"]][[paste("dim",dim_name,sep="_")]] <- copy(x[,unique(.SD),.SDcols=c(names(fk)[fk==names(dim_name)])])
-      fk_name <- paste("fk","dim",dim_name,names(dim_name),sep="_")
-      dw[["relations"]][[fk_name]] <- list(fk_table=paste("dim",dim_name,sep="_"), fk_name=fk_name, fk_col_name=names(dim_name))
+      fk_col_name <- names(dim_name)
+      if(setkey) setkeyv(dw[["tables"]][[paste("dim",dim_name,sep="_")]], fk_col_name)
+      fk_name <- paste("fk","dim",dim_name,fk_col_name,sep="_")
+      dw[["relations"]][[fk_name]] <- list(fk_table=paste("dim",dim_name,sep="_"), fk_name=fk_name, fk_col_name=fk_col_name)
     }
     dw[["tables"]][[factname]] <- copy(x[,.SD,.SDcols=-c(bycols[!(bycols %in% unique(fk))])])
+    if(setkey) setkeyv(dw[["tables"]][[factname]], unique(fk))
     dw
   }, length(fk_dim_names)+1L, tag=paste("build_hierarchy","build tables",sep=getOption("dwtools.tag.sep",";")), .timing=timing, verbose=verbose)
   if(!deploy) return(dw)
