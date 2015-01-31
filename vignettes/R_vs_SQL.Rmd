@@ -89,9 +89,9 @@ PR must be runable from within R + packages, any external dependency tool must b
 
 # Benchmark configuration
 
-Currently supported benchmark volumes are 1e3, 1e5, 1e6, 1e7.
+Currently supported benchmark volumes are 1e3, 1e5, 1e6, 1e7, 1e8.
 ```{r N}
-N = 1e3
+N = 1e6
 ```
 
 ```{r benchmark_default_eval, echo=FALSE}
@@ -105,7 +105,7 @@ Setup databases to test (comment `"psql"` line to exclude postgres benchmark):
 # benchmark dbs
 db_test = c("sqlite","sqlite_memory")
 # optional dbs
-db_test <- c(db_test,"psql")
+#db_test <- c(db_test,"psql")
 ```
 
 ## Packages used
@@ -170,7 +170,7 @@ plot_timing <- function(x){
   invisible()
 }
 
-# filter sample - valid for dw.populate(S=1) and N in 1e3, 1e5, 1e6, 1e7:
+# filter sample - valid for dw.populate(S=1) and N in 1e3, 1e5, 1e6, 1e7, 1e8:
 whereList <- function(N){
   W <- list()
   if(N==1e3){
@@ -213,12 +213,22 @@ whereList <- function(N){
     W[["3"]][["prod_code"]] <- c(27641L,22277L,66907L) # 3rd filter
     W[["3"]][["geog_code"]] <- c("IN","VA","CT")
   }
+  else if(N==1e8){
+    W[["1"]][["cust_code"]] <- c("id067","id062","id038") # 1st filter
+    W[["1"]][["prod_code"]] <- c(431352L,930119L,493908L)
+    W[["1"]][["geog_code"]] <- c("VT","WV","MO")
+    W[["2"]][["cust_code"]] <- c("id007","id022","id004") # 2nd filter
+    W[["2"]][["geog_code"]] <- c("SC","AK","ME")
+    W[["2"]][["curr_code"]] <- c("UAH","CAD","IRR")
+    W[["3"]][["prod_code"]] <- c(532993L,951482L,347098L) # 3rd filter
+    W[["3"]][["geog_code"]] <- c("KY","IL","OK")
+  }
   else {
     ## below queries can be helpful to find bigger samples for filtering
     # DT[,.N,by=c("cust_code","prod_code","geog_code")][order(-N)][1:6]
     # DT[,.N,by=c("cust_code","geog_code","curr_code")][order(-N)][1:6]
     # DT[,.N,by=c("prod_code","geog_code")][order(-N)][1:6]
-    stop("filtering samples were prepared for `N %in% c(1e3, 1e5, 1e6, 1e7)`. You need to extend the section *where* to for valid filtering samples for the data.")
+    stop("filtering samples were prepared for `N %in% c(1e3, 1e5, 1e6, 1e7, 1e8)`. You need to extend the section *where* to for valid filtering samples for the data.")
   }
   W
 }
@@ -907,6 +917,12 @@ if(N==1e5){
 }
 if(N==1e6){
   nr <- c(1000,1000)
+}
+if(N==1e7){
+  nr <- c(10000,1000)
+}
+if(N==1e8){
+  nr <- c(10000,10000)
 }
 
 # NON INDEX
@@ -1684,6 +1700,7 @@ sudo apt-get update
 sudo apt-get -y install r-base-core
 sudo apt-get -y install libcurl4-openssl-dev
 sudo apt-get -y install libcurl4-gnutls-dev
+sudo apt-get -y install libxml2-dev
 sudo apt-get -y install htop
 sudo apt-get -y install git
 sudo apt-get -y install gdebi-core libapparmor1
