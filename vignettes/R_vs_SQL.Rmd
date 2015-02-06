@@ -10,6 +10,12 @@ output:
 ---
 
 ```{r r_init, echo=FALSE}
+# TO DO
+# [x] read data - fread - silent
+# [x] remove base tests due to very long time of execution: group, distinct, union
+# [x] optimize data population for DB to speedup full test
+# [ ] optimize data.equal.data.table
+# [ ] add postgres installation to ec2 script
 suppressPackageStartupMessages(library(dwtools))
 # presentation pkgs
 library(knitr)
@@ -144,6 +150,7 @@ options("dwtools.timing.nano"=TRUE)
 options("dwtools.session"=as.integer(Sys.time())) # update session id for each run of Rmd
 options("datatable.timing"=FALSE) # data.table/jangorecki@timing
 options("datatable.auto.index"=FALSE)
+options("datatable.showProgress"=FALSE)
 ```
 
 ## Preview data
@@ -427,9 +434,9 @@ stopifnot(data.equal.data.table(r3,r0))
 
 rm(IDX,r0)
 
-DT = copy(X$SALES)
-try(db("DROP TABLE db", db_test),silent = TRUE)
-db(DT,"db",db_test)
+#DT = copy(X$SALES)
+#try(db("DROP TABLE db", db_test),silent = TRUE)
+#db(DT,"db",db_test)
 create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
 r = lapply(db_test, function(db_t){
   db(create_index_sql,db_t)
@@ -466,35 +473,36 @@ W <- whereList(N=N)
 
 # NON INDEX
 
-DF = as.data.frame(copy(X$SALES))
-r1 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","prod_code","geog_code")]), FUN=sum),
-            N, paste("group",paste(names(W[["1"]]),collapse=","),"no_index","R","base","aggregate",sep=";"))
-r2 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","geog_code","curr_code")]), FUN=sum),
-            N, paste("group",paste(names(W[["2"]]),collapse=","),"no_index","R","base","aggregate",sep=";"))
-r3 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("prod_code","geog_code")]), FUN=sum),
-            N, paste("group",paste(names(W[["3"]]),collapse=","),"no_index","R","base","aggregate",sep=";"))
+DT = copy(X$SALES)
+r1 = timing(DT[,lapply(.SD,sum), by=c("cust_code","prod_code","geog_code"), .SDcols=c("amount","value")],
+            N, paste("group",paste(names(W[["1"]]),collapse=","),"no_index","R","data.table","[.data.table",sep=";"))
+r2 = timing(DT[,lapply(.SD,sum), by=c("cust_code","geog_code","curr_code"), .SDcols=c("amount","value")],
+            N, paste("group",paste(names(W[["2"]]),collapse=","),"no_index","R","data.table","[.data.table",sep=";"))
+r3 = timing(DT[,lapply(.SD,sum), by=c("prod_code","geog_code"), .SDcols=c("amount","value")],
+            N, paste("group",paste(names(W[["3"]]),collapse=","),"no_index","R","data.table","[.data.table",sep=";"))
+
+# # base R group removed due to low scalability
+# DF = as.data.frame(copy(X$SALES))
+# r0 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","prod_code","geog_code")]), FUN=sum),
+#             N, paste("group",paste(names(W[["1"]]),collapse=","),"no_index","R","base","aggregate",sep=";"))
+# stopifnot(data.equal.data.table(r1,setDT(r0)))
+# r0 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("cust_code","geog_code","curr_code")]), FUN=sum),
+#             N, paste("group",paste(names(W[["2"]]),collapse=","),"no_index","R","base","aggregate",sep=";"))
+# stopifnot(data.equal.data.table(r2,setDT(r0)))
+# r0 = timing(aggregate(DF[c("amount","value")], by=as.list(DF[c("prod_code","geog_code")]), FUN=sum),
+#             N, paste("group",paste(names(W[["3"]]),collapse=","),"no_index","R","base","aggregate",sep=";"))
+# stopifnot(data.equal.data.table(r3,setDT(r0)))
 
 DF = as.data.frame(copy(X$SALES))
 r0 = timing(DF %>% group_by(cust_code, prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
             N, paste("group",paste(names(W[["1"]]),collapse=","),"no_index","R","dplyr","select-group_by-summarise_each",sep=";"))
-stopifnot(data.equal.data.table(setDT(r1),setDT(as.data.frame(r0))))
+stopifnot(data.equal.data.table(r1,setDT(as.data.frame(r0))))
 r0 = timing(DF %>% group_by(cust_code, geog_code, curr_code) %>% summarise_each(funs(sum), amount,value),
             N, paste("group",paste(names(W[["2"]]),collapse=","),"no_index","R","dplyr","select-group_by-summarise_each",sep=";"))
-stopifnot(data.equal.data.table(setDT(r2),setDT(as.data.frame(r0))))
+stopifnot(data.equal.data.table(r2,setDT(as.data.frame(r0))))
 r0 = timing(DF %>% group_by(prod_code, geog_code) %>% summarise_each(funs(sum), amount,value),
             N, paste("group",paste(names(W[["3"]]),collapse=","),"no_index","R","dplyr","select-group_by-summarise_each",sep=";"))
-stopifnot(data.equal.data.table(setDT(r3),setDT(as.data.frame(r0))))
-
-DT = copy(X$SALES)
-r0 = timing(DT[,lapply(.SD,sum), by=c("cust_code","prod_code","geog_code"), .SDcols=c("amount","value")],
-            N, paste("group",paste(names(W[["1"]]),collapse=","),"no_index","R","data.table","[.data.table",sep=";"))
-stopifnot(data.equal.data.table(r1,r0))
-r0 = timing(DT[,lapply(.SD,sum), by=c("cust_code","geog_code","curr_code"), .SDcols=c("amount","value")],
-            N, paste("group",paste(names(W[["2"]]),collapse=","),"no_index","R","data.table","[.data.table",sep=";"))
-stopifnot(data.equal.data.table(r2,r0))
-r0 = timing(DT[,lapply(.SD,sum), by=c("prod_code","geog_code"), .SDcols=c("amount","value")],
-            N, paste("group",paste(names(W[["3"]]),collapse=","),"no_index","R","data.table","[.data.table",sep=";"))
-stopifnot(data.equal.data.table(r3,r0))
+stopifnot(data.equal.data.table(r3,setDT(as.data.frame(r0))))
 
 DT = copy(X$SALES)
 try(db("DROP TABLE db", db_test),silent = TRUE)
@@ -516,7 +524,7 @@ r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
     invisible()
   })
 })
-non_idx_n <- 3*3 + length(db_test)*length(select_sql)
+non_idx_n <- 2*3 + length(db_test)*length(select_sql)
 
 # INDEX
 
@@ -527,9 +535,9 @@ r0 = timing(DT[,lapply(.SD, sum), by=c("cust_code", "prod_code", "geog_code"), .
 stopifnot(data.equal.data.table(r1,r0))
 rm(r0)
 
-DT = copy(X$SALES)
-try(db("DROP TABLE db", db_test),silent = TRUE)
-db(DT,"db",db_test)
+#DT = copy(X$SALES)
+#try(db("DROP TABLE db", db_test),silent = TRUE)
+#db(DT,"db",db_test)
 create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
 r = lapply(db_test, function(db_t){
   db(create_index_sql,db_t)
@@ -630,9 +638,9 @@ stopifnot(data.equal.data.table(r1,r0))
 rm(r0,DT)
 
 if(length(db_test[!(db_test %like% "sqlite")])>0){
-  DT = copy(X$SALES)
-  try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
-  db(DT,"db",db_test[!(db_test %like% "sqlite")])
+  #DT = copy(X$SALES)
+  #try(db("DROP TABLE db", db_test[!(db_test %like% "sqlite")]),silent = TRUE)
+  #db(DT,"db",db_test[!(db_test %like% "sqlite")])
   create_index_sql <- sapply(Idx, function(x) paste0("CREATE INDEX db_idx_",paste(x,collapse="_")," ON db (",paste(x,collapse=","),")"))
   r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){
     db(create_index_sql,db_t)
@@ -742,8 +750,8 @@ if(length(db_test[!(db_test %like% "sqlite")])>0){
   )
   # exclude sqlite
   r = lapply(db_test[!(db_test %like% "sqlite")], function(db_t){ # timing of each sql per each db_test
-    try(db("DROP TABLE db",db_t),silent = TRUE)
-    db(DT,"db",db_t)
+    #try(db("DROP TABLE db",db_t),silent = TRUE)
+    #db(DT,"db",db_t)
     db("CREATE INDEX db_idx_cust_code_time_code ON db (cust_code,time_code)",db_t)
     p = lapply(1:length(select_sql), function(i){
       r0 = eval(bquote(timing(db(.(select_sql[i]),.(db_t)),N,paste("partition_non_aggr",if(i==1L) "value_lag_1" else if(i==2L) "time_code_value_lead_1","index","DB",db_t,"db",sep=";"))))
@@ -809,10 +817,10 @@ r0 = timing(dt[jn,nomatch=0],
             N, paste("inner_join",NA_character_,"index","R","data.table","[.data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0,ignore_col_order = TRUE))
 
-try(db("DROP TABLE db", db_test),silent = TRUE)
-try(db("DROP TABLE jn", db_test),silent = TRUE)
-db(FT,"db",db_test)
-db(JN,"jn",db_test)
+# try(db("DROP TABLE db", db_test),silent = TRUE)
+# try(db("DROP TABLE jn", db_test),silent = TRUE)
+# db(FT,"db",db_test)
+# db(JN,"jn",db_test)
 r = lapply(db_test, function(db_t){
   db("CREATE INDEX db_idx_prod_code ON db (prod_code)",db_t)
   db("CREATE INDEX jn_idx_prod_code ON jn (prod_code)",db_t)
@@ -880,10 +888,10 @@ r0 = timing(jn[dt,nomatch=NA],
             N, paste("left_join",NA_character_,"index","R","data.table","[.data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0,ignore_col_order = TRUE))
 
-try(db("DROP TABLE db", db_test),silent = TRUE)
-try(db("DROP TABLE jn", db_test),silent = TRUE)
-db(FT,"db",db_test)
-db(JN,"jn",db_test)
+# try(db("DROP TABLE db", db_test),silent = TRUE)
+# try(db("DROP TABLE jn", db_test),silent = TRUE)
+# db(FT,"db",db_test)
+# db(JN,"jn",db_test)
 r = lapply(db_test, function(db_t){
   db("CREATE INDEX db_idx_prod_code ON db (prod_code)",db_t)
   db("CREATE INDEX jn_idx_prod_code ON jn (prod_code)",db_t)
@@ -1250,9 +1258,9 @@ r0 <- timing(DT[order(cust_code,prod_code,geog_code,time_code,curr_code,amount,v
              N, paste("order",NA_character_,"index","R","data.table","[.data.table",sep=";"))
 stopifnot(data.equal.data.table(r1,r0))
 
-DT = copy(X$SALES)
-try(db("DROP TABLE db", db_test),silent = TRUE)
-db(DT,"db",db_test)
+#DT = copy(X$SALES)
+#try(db("DROP TABLE db", db_test),silent = TRUE)
+#db(DT,"db",db_test)
 r = lapply(db_test, function(db_t){
   db(paste0("CREATE INDEX db_idx_all ON db (",paste(names(DT),collapse=","),")"),db_t)
 })
@@ -1337,14 +1345,14 @@ DT = copy(X$SALES)
 
 # NON INDEX
 
-# base
-DF = as.data.frame(DT)
-r1 <-timing(unique(DF),
-            N, paste("distinct",NA_character_,"no_index","R","base","unique",sep=";"))
 # dt
-r0 <- timing(unique(DT,by=names(DT)),
+r1 <- timing(unique(DT,by=names(DT)),
              N, paste("distinct",NA_character_,"no_index","R","data.table","unique",sep=";"))
-stopifnot(data.equal.data.table(setDT(r1),r0))
+# # base R removed due to low scalability
+# DF = as.data.frame(DT)
+# r0 <- timing(unique(DF),
+#              N, paste("distinct",NA_character_,"no_index","R","base","unique",sep=";"))
+# stopifnot(data.equal.data.table(r1,setDT(r0)))
 # dplyr
 DF = as.data.frame(DT)
 r0 <- timing(distinct(DF),
@@ -1359,7 +1367,7 @@ r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   stopifnot(data.equal.data.table(r1,r0))
   invisible()
 })
-non_idx_n <- 1 + 1 + 1 + 1*length(db_test)
+non_idx_n <- 1 + 1 + 1*length(db_test)
 
 rm(DF)
 
@@ -1371,8 +1379,8 @@ stopifnot(data.equal.data.table(r1,r0))
 
 DT = copy(X$SALES)
 r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
-  try(db("DROP TABLE db", db_t),silent = TRUE)
-  db(DT,"db",db_t)
+  #try(db("DROP TABLE db", db_t),silent = TRUE)
+  #db(DT,"db",db_t)
   db(paste0("CREATE INDEX db_idx_all ON db (",paste(names(DT),collapse=","),")"),db_t)
   r0 = eval(bquote(timing(db("SELECT DISTINCT * FROM db",.(db_t)),
                           N,paste("distinct",NA_character_,"index","DB",db_t,"db",sep=";"))))
@@ -1408,15 +1416,15 @@ rm(DT)
 
 # NON INDEX only
 
-# base
+# dt
+r1 <- timing(unique(rbindlist(list(DT1,DT2))),
+             N, paste("union",NA_character_,"no_index","R","data.table","unique-rbindlist",sep=";"))
 DF1 = as.data.frame(DT1)
 DF2 = as.data.frame(DT2)
-r1 <-timing(unique(rbind(DF1,DF2)),
-            N, paste("union",NA_character_,"no_index","R","base","unique-rbind",sep=";"))
-# dt
-r0 <- timing(unique(rbindlist(list(DT1,DT2))),
-             N, paste("union",NA_character_,"no_index","R","data.table","unique-rbindlist",sep=";"))
-stopifnot(data.equal.data.table(setDT(r1),r0))
+# # base R removed due to low scalability
+# r0 <-timing(unique(rbind(DF1,DF2)),
+#             N, paste("union",NA_character_,"no_index","R","base","unique-rbind",sep=";"))
+# stopifnot(data.equal.data.table(r1,setDT(r0)))
 # dplyr, union performance issue reported: dplyr/issues/924, below is workaround
 r0 <- timing(unique(bind_rows(DF1,DF2)),
              N, paste("union",NA_character_,"no_index","R","dplyr","unique-bind_rows",sep=";"))
@@ -1433,7 +1441,7 @@ r = lapply(db_test, function(db_t){ # timing of each sql per each db_test
   stopifnot(data.equal.data.table(r1,r0))
   invisible()
 })
-non_idx_n <- 1 + 1 + 1 + 1*length(db_test)
+non_idx_n <- 1 + 1 + 1*length(db_test)
 
 rm(DT1,DT2,r0,r1)
 
@@ -1588,12 +1596,12 @@ r0 <- timing(DT1[DT2,.SD,nomatch=0L,.SDcols=c(names(DT1))],
              N, paste("intersect",NA_character_,"index","R","data.table","[.data.table",sep=";"))
 
 # sql
-DT1 = DT[i1]
-DT2 = DT[i2]
-try(db("DROP TABLE db1", db_test),silent = TRUE)
-try(db("DROP TABLE db2", db_test),silent = TRUE)
-db(DT1,"db1",db_test)
-db(DT2,"db2",db_test)
+# DT1 = DT[i1]
+# DT2 = DT[i2]
+# try(db("DROP TABLE db1", db_test),silent = TRUE)
+# try(db("DROP TABLE db2", db_test),silent = TRUE)
+# db(DT1,"db1",db_test)
+# db(DT2,"db2",db_test)
 r = lapply(db_test, function(db_t){
   db(paste0("CREATE INDEX db1_idx_all ON db1 (",paste(names(DT1),collapse=","),")"),db_t)
   db(paste0("CREATE INDEX db2_idx_all ON db1 (",paste(names(DT2),collapse=","),")"),db_t)
