@@ -111,11 +111,11 @@ data.equal.data.table <- function(DT1, DT2, ignore_row_order=TRUE, ignore_col_or
       }
     }
   }
-  DT1[,`__dwtools_N`:=.N,by=c(names(DT1))]
-  DT2[,`__dwtools_N`:=.N,by=c(names(DT2))]
-  setkeyv(DT1,names(DT1))
-  setkeyv(DT2,names(DT2))
-  all(sapply(list(DT2[!DT1], DT1[!DT2]), function(x) nrow(x)==0L))
+  dif12 <- data.table:::setdiff_(DT1,DT2)
+  if(nrow(dif12)>0L) return(FALSE)
+  dif21 <- data.table:::setdiff_(DT2,DT1)
+  if(nrow(dif21)>0L) return(FALSE)
+  return(TRUE)
 }
 
 #' @title Fast check is vector unique
