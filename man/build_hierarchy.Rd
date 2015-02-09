@@ -5,8 +5,8 @@
 \alias{dw.explore}
 \title{Build hierarchy}
 \usage{
-build_hierarchy(x, factname = "fact", dimnames = "auto", deploy = FALSE,
-  db.conn.name, .db.conns = getOption("dwtools.conns"),
+build_hierarchy(x, factname = "fact", dimnames = "auto", setkey = TRUE,
+  deploy = FALSE, db.conn.name, .db.conns = getOption("dwtools.conns"),
   timing = getOption("dwtools.timing"),
   verbose = getOption("dwtools.verbose"))
 }
@@ -16,6 +16,8 @@ build_hierarchy(x, factname = "fact", dimnames = "auto", deploy = FALSE,
 \item{factname}{character, default \emph{fact}.}
 
 \item{dimnames}{character currently only \emph{auto} supported, default. Dimension names will be created based on the common words in the fields which forms the dimension.}
+
+\item{setkey}{logical if return tables with keys.}
 
 \item{deploy}{logical, \emph{TRUE} will \strong{overwrite} the data in the target tables in connection \emph{db.conn.name}.}
 
