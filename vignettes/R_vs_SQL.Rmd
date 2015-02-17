@@ -14,13 +14,14 @@ output:
 # [x] read data - fread - silent
 # [x] remove base tests due to very long time of execution: group, distinct, union
 # [x] optimize data population for DB to speedup full test
-# [ ] optimize data.equal.data.table
+# [x] optimize data.equal.data.table
 # [ ] add postgres installation to ec2 script
+# [x] add volumes support: 5e5, 5e6, 5e7
 suppressPackageStartupMessages(library(dwtools))
 # presentation pkgs
 library(knitr)
 library(microbenchmark)
-opts_chunk$set(cache=FALSE,collapse=TRUE, comment="#>", dev="svg")
+opts_chunk$set(cache=FALSE,collapse=TRUE, comment="#>", dev="svg", error=FALSE)
 Sys.setenv(TZ="UTC")
 options(scipen=100)
 global_start <- proc.time()[[3]]
@@ -36,6 +37,7 @@ SQL names used:
 
 * WRITE (_create table as select_)
 * READ (_select \*_)
+* CREATE INDEX
 * SELECT WHERE
 * GROUP BY
 * PARTITION BY - aggregate
@@ -47,7 +49,6 @@ SQL names used:
 * UPDATE
 * UPDATE FROM
 * ORDER BY
-* CREATE INDEX
 * PIVOT
 * UNPIVOT
 * DISTINCT
@@ -76,7 +77,7 @@ SQL names used:
 ### Notes
 
 There will be no cold/hot runs, all goes in a single session, but input dataset is re-populated each time to have a fresh dataset for each test.  
-Some of the combinations will not be available, e.g. sqlite does not support *partition by*, sqlite and postgres does not support *pivot* and *unpivot*, base R and dplyr does not support *indices*, dplyr does not support *cross join*.  
+Some of the combinations will not be available, e.g. sqlite does not support *partition by*, sqlite and postgres does not support *pivot* and *unpivot*, base R and dplyr does not support *indices*, dplyr does not support *cross join*. Some others will use a workarounds because of open issues in some packages, each case is commented.  
 **Any database interface will include penalty of transferring data to/from R**. Currently defined SQLite and postgres uses native db drivers via DBI so the data transferring penalty is minimized as much as possible. In case of comparing DBI to ODBC it would be better to benchmark off-R in databases as ODBC may be a bottleneck.  
 Only time will be measured, not the memory.
 
@@ -95,7 +96,7 @@ PR must be runable from within R + packages, any external dependency tool must b
 
 # Benchmark configuration
 
-Currently supported benchmark volumes are 1e3, 1e5, 1e6, 1e7, 1e8.
+Currently supported benchmark volumes are from 1e5 to 1e8, by 0.5e.
 ```{r N}
 N = 1e6
 ```
@@ -111,7 +112,7 @@ Setup databases to test (comment `"psql"` line to exclude postgres benchmark):
 # benchmark dbs
 db_test = c("sqlite","sqlite_memory")
 # optional dbs
-#db_test <- c(db_test,"psql")
+db_test <- c(db_test,"psql")
 ```
 
 ## Packages used
@@ -177,7 +178,7 @@ plot_timing <- function(x){
   invisible()
 }
 
-# filter sample - valid for dw.populate(S=1) and N in 1e3, 1e5, 1e6, 1e7, 1e8:
+# filter sample - valid for dw.populate(S=1) and N: 1e3, and from 1e5 to 1e8, by 0.5
 whereList <- function(N){
   W <- list()
   if(N==1e3){
@@ -230,12 +231,42 @@ whereList <- function(N){
     W[["3"]][["prod_code"]] <- c(532993L,951482L,347098L) # 3rd filter
     W[["3"]][["geog_code"]] <- c("KY","IL","OK")
   }
+  else if(N==5e5){
+  W[["1"]][["cust_code"]] <- c("id086","id007","id068")
+  W[["1"]][["prod_code"]] <- c(1298L,3676L,3647L)
+  W[["1"]][["geog_code"]] <- c("ND","MI","NJ")
+  W[["2"]][["cust_code"]] <- c("id043","id096","id075")
+  W[["2"]][["geog_code"]] <- c("HI","KY","AZ")
+  W[["2"]][["curr_code"]] <- c("CHF","ARS","PPC")
+  W[["3"]][["prod_code"]] <- c(2848L,4743L,2543L)
+  W[["3"]][["geog_code"]] <- c("TX","LA","MN")
+}
+else if(N==5e6){
+  W[["1"]][["cust_code"]] <- c("id073","id058","id095")
+  W[["1"]][["prod_code"]] <- c(26088L,14847L,40725L)
+  W[["1"]][["geog_code"]] <- c("MS","NV","WY")
+  W[["2"]][["cust_code"]] <- c("id046","id090","id062")
+  W[["2"]][["geog_code"]] <- c("MI","NJ","IL")
+  W[["2"]][["curr_code"]] <- c("MS","NV","WY")
+  W[["3"]][["prod_code"]] <- c(30974L,6470L,4264L)
+  W[["3"]][["geog_code"]] <- c("WI","AZ","MA")
+}
+else if(N==5e7){
+  W[["1"]][["cust_code"]] <- c("id010","id084","id081")
+  W[["1"]][["prod_code"]] <- c(260063L,114119L,399766L)
+  W[["1"]][["geog_code"]] <- c("ID","NE","CT")
+  W[["2"]][["cust_code"]] <- c("id010","id053","id016")
+  W[["2"]][["geog_code"]] <- c("MT","MN","WY")
+  W[["2"]][["curr_code"]] <- c("UAH","GEL","MYR")
+  W[["3"]][["prod_code"]] <- c(174978L,4455L,113433L)
+  W[["3"]][["geog_code"]] <- c("NH","ME","CT")
+}
   else {
     ## below queries can be helpful to find bigger samples for filtering
-    # DT[,.N,by=c("cust_code","prod_code","geog_code")][order(-N)][1:6]
-    # DT[,.N,by=c("cust_code","geog_code","curr_code")][order(-N)][1:6]
-    # DT[,.N,by=c("prod_code","geog_code")][order(-N)][1:6]
-    stop("filtering samples were prepared for `N %in% c(1e3, 1e5, 1e6, 1e7, 1e8)`. You need to extend the section *where* to for valid filtering samples for the data.")
+    # DT[,.N,by=c("cust_code","prod_code","geog_code")][order(-N)][1:3][,N:=NULL][,lapply(.SD,paste,collapse='","')]
+    # DT[,.N,by=c("cust_code","geog_code","curr_code")][order(-N)][1:3][,N:=NULL][,lapply(.SD,paste,collapse='","')]
+    # DT[,.N,by=c("prod_code","geog_code")][order(-N)][1:3][,N:=NULL][,lapply(.SD,paste,collapse='","')]
+    stop("filtering samples were prepared for N in 1e3, 1e5:1e8 by 0.5. You need to extend the section *where* to for valid filtering samples for the data.")
   }
   W
 }
@@ -248,7 +279,10 @@ Idx = list(c("cust_code", "prod_code", "geog_code"), c("cust_code",
 
 ```{r benchmark_start, echo=FALSE, eval=FALSE}
 # Each of below tests can be re-run separately
+purge.timing()
 ```
+
+Expressions below each timing table are limited to one expression per tool. For detailed expressions for each tool, scenario and indexing see the vignettes *Rmd* script.  
 
 ## write data
 
@@ -760,7 +794,7 @@ if(length(db_test[!(db_test %like% "sqlite")])>0){
     })
   })
 }
-
+rm(r1,r2,r0,DT)
 idx_n = 2 + 2*length(db_test[!(db_test %like% "sqlite")])
 
 last = non_idx_n + idx_n
@@ -919,18 +953,20 @@ Cross joins are performed on smaller datasets to give a result of nrow equal to 
 ```{r cross_join, echo=FALSE, eval=benchmark_eval}
 if(N==1e3){
   nr <- c(10,100)
-}
-if(N==1e5){
+} else if(N==1e5){
   nr <- c(100,1000)
-}
-if(N==1e6){
+} else if(N==1e6){
   nr <- c(1000,1000)
-}
-if(N==1e7){
+} else if(N==1e7){
   nr <- c(10000,1000)
-}
-if(N==1e8){
+} else if(N==1e8){
   nr <- c(10000,10000)
+} else if(N==5e5){
+  nr <- c(500,1000)
+} else if(N==5e6){
+  nr <- c(5000,1000)
+} else if(N==5e7){
+  nr <- c(10000,5000)
 }
 
 # NON INDEX
@@ -1146,13 +1182,13 @@ REF_back = copy(REF)
 r1 = timing(setkey(DT,prod_code)[setkey(REF,prod_code), value := value * prod_value_mp],
             N, paste("update_from",NA_character_,"no_index","R","data.table","setkey-[.data.table",sep=";"))
 
+# tried prefiltering cols in REF but it is slower: DF <- left_join(DF, select(REF,prod_code,prod_value_mp), by = "prod_code") %>% mutate(value = value * prod_value_mp) %>% select(-prod_value_mp)
 DF = as.data.frame(X$SALES)
 REF = as.data.frame(REF_back)
 r0 = timing(DF <- left_join(DF, REF, by = "prod_code") %>% mutate(value = value * prod_value_mp) %>% select(cust_code,prod_code,geog_code,time_code,curr_code,amount,value),
             N, paste("update_from",NA_character_,"no_index","R","dplyr","left_join-mutate-select",sep=";"))
 stopifnot(data.equal.data.table(r1,setDT(as.data.frame(DF))))
 rm(r0)
-# tried prefiltering cols in REF but it is slower: DF <- left_join(DF, select(REF,prod_code,prod_value_mp), by = "prod_code") %>% mutate(value = value * prod_value_mp) %>% select(-prod_value_mp)
 
 if(length(db_test[!(db_test %like% "sqlite")])>0){
   DT = copy(X$SALES)
@@ -1209,6 +1245,7 @@ if(length(db_test[!(db_test %like% "sqlite")])>0){
     invisible()
   })
 }
+rm(REF,REF_back)
 idx_n = 1 + 1*length(db_test[!(db_test %like% "sqlite")])
 
 last=non_idx_n+idx_n
@@ -1407,12 +1444,9 @@ DT = copy(X$SALES)
 set.seed(1)
 i1 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
 i2 = sample(1:nrow(DT),nrow(DT)/2, replace = FALSE)
-
-# NON INDEX
-
 DT1 = DT[i1]
 DT2 = DT[i2]
-rm(DT)
+rm(DT,i1,i2)
 
 # NON INDEX only
 
@@ -1575,7 +1609,7 @@ DF2 = as.data.frame(DT2)
 r0 <- timing(intersect(DF1,DF2),
              N, paste("intersect",NA_character_,"no_index","R","dplyr","intersect",sep=";"))
 stopifnot(data.equal.data.table(r1,setDT(r0)))
-rm(DF1,DF2)
+rm(DF1,DF2,i1,i2)
 # sql
 try(db("DROP TABLE db1", db_test),silent = TRUE)
 try(db("DROP TABLE db2", db_test),silent = TRUE)
@@ -1628,6 +1662,7 @@ invisible(showtiming(last=last)[,print_expr(.SD)])
 # Benchmark summary
 
 ```{r benchmark_cleanup, echo=FALSE}
+rm(X)
 if(file.exists("benchmark.rds")) invisible(file.remove("benchmark.rds"))
 if(file.exists("benchmark.csv")) invisible(file.remove("benchmark.csv"))
 invisible(lapply(getOption("dwtools.db.conns"), function(db_test) dbDisconnect(db_test[["conn"]])))
@@ -1638,35 +1673,40 @@ if(file.exists("sqlite.db")) invisible(file.remove("sqlite.db"))
 ## Environment details
 
 Update this section in case of publishing reproduction of benchmark.
+```{r r_env, echo=FALSE, results='asis'}
+amazon_ec2_R3 = data.table(model=c("r3.large","r3.xlarge","r3.2xlarge","r3.4xlarge","r3.8xlarge"),
+                           vcpu=2^(1:5),
+                           memory_gb=15.25*2^(0:4),
+                           ssd_storage_n=c(1,1,1,1,2),
+                           ssd_storage_gb=c(32,80,160,320,320),
+                           key="model")[.("r3.xlarge"),print(kable(.SD))]
+```
 ```{r r_version, echo=FALSE}
-# TO DO
-# [ ] get cpu and memory dynamically
-# a = system("free -m 2>&1", intern = TRUE)
-#system("free -ZZ  > dwtools_memory.tmp 2>&1 ", intern = TRUE)
-#read.csv("dwtools_memory.tmp")
-cat("\n")
-cat("\n")
 cat(R.version$version.string,"\n",sep="")
 cat(R.version$platform,"\n",sep="")
 ```
 
 ## Benchmark timings
 
-```{r benchmark_timings, echo=FALSE}
+```{r benchmark_timing_save, echo=FALSE}
 # query benchmark results only from current session
-saveRDS(get.timing(FALSE),paste0("benchmark_",N,"_",as.integer(Sys.time()),".rds")) # store logs for easier merging multiple N timings
+dt = get.timing(FALSE)
+saveRDS(dt,paste0("benchmark_",N,"_",getOption("dwtools.session"),".rds")) # store logs for easier merging multiple N timings
 ```
 
 TO DO some overview plots for multiple tests, yet single N:
 
-- data.table vs mean
-- dplyr vs mean
-- sqlite vs mean
-- ?
+```{r benchmark_timing_summary, echo=FALSE}
+# each tool vs mean
+dt <- dt[,c("test","scenario","indexing","environment","tool","fun") := rbindlist(lapply(strsplit(tag, ";", fixed="TRUE"),as.list))
+         ][,.(elapsed),by = c("dwtools_session","in_n","test","scenario","indexing","environment","tool")]
+# TO DO
+rm(dt)
+```
 
 ## Conclusions
 
-TO DO summary
+TO DO summary "R can cover ETL needs well and scalable"
 
 ## References
 
