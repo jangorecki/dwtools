@@ -15,7 +15,7 @@ output:
 # [x] remove base tests due to very long time of execution: group, distinct, union
 # [x] optimize data population for DB to speedup full test
 # [x] optimize data.equal.data.table
-# [ ] add postgres installation to ec2 script
+# [x] add postgres installation to ec2 script
 # [x] add volumes support: 5e5, 5e6, 5e7
 suppressPackageStartupMessages(library(dwtools))
 # presentation pkgs
@@ -66,7 +66,7 @@ SQL names used:
 * in-memory sqlite
 * postgres (optional)
 * tidyr - _pivot, unpivot_ test
-* dwtools - _select where, multiple indices_ test
+* dwtools - _select where (multiple indices)_ test
 * optiRum - _cross join_ test
 
 ### Index scenarios
@@ -92,7 +92,7 @@ In case of benchmarking big data it might be desired to setup environment on ama
 Feel free to PR improvements to the benchmark.  
 Document will be updated by merging PR.  
 Additionally if you believe there is a common task related to ETL which was not covered here feel free to PR.  
-PR must be runable from within R + packages, any external dependency tool must be optional as already tested postgres.
+PR must be runable from within R + packages, any external dependency tool must be easily optional as already included postgres.
 
 # Benchmark configuration
 
@@ -149,7 +149,7 @@ options("dwtools.timing.conn.name"=NULL) # always log to memory, can be change t
 options("dwtools.timing"=FALSE) # all timings will be prepared ad-hoc, no auto-timing
 options("dwtools.timing.nano"=TRUE)
 options("dwtools.session"=as.integer(Sys.time())) # update session id for each run of Rmd
-options("datatable.timing"=FALSE) # data.table/jangorecki@timing
+options("datatable.timing"=FALSE) # in case of using jangorecki/data.table@timing
 options("datatable.auto.index"=FALSE)
 options("datatable.showProgress"=FALSE)
 ```
@@ -1682,8 +1682,7 @@ amazon_ec2_R3 = data.table(model=c("r3.large","r3.xlarge","r3.2xlarge","r3.4xlar
                            key="model")[.("r3.xlarge"),print(kable(.SD))]
 ```
 ```{r r_version, echo=FALSE}
-cat(R.version$version.string,"\n",sep="")
-cat(R.version$platform,"\n",sep="")
+print(sessionInfo())
 ```
 
 ## Benchmark timings
@@ -1731,27 +1730,23 @@ Notable articles:
 * [data.table presentations](https://github.com/Rdatatable/data.table/wiki/Presentations)
 * [Amazon EC2 for beginners](https://github.com/Rdatatable/data.table/wiki/Amazon-EC2-for-beginners): how to cheap _spot instances_ (30GB RAM + 4 cores = $0.03/h, 244GB RAM + 32 cores = $0.25/h).
 
-And good web books:
+And good R books:
 
 * [Advanced R](http://adv-r.had.co.nz/)
 * [Ramarro: R for Developers](http://www.quantide.com/R/r-training/r-web-books/ramarro-r-for-developers/)
 
-Reproduction script for amazon EC2 (no postgres):
+Reproduction script for amazon EC2:
 
 * Allow EC2 access on `8787` port
 * Connect to your EC2 instance console: `ssh -i auth_key.pem ubuntu@amazon.instance.ip`
-* Configure ubuntu for R, [RStudio Server](http://www.rstudio.com/products/rstudio/download-server/), curl, git:
+* Configure ubuntu for R, [RStudio Server](http://www.rstudio.com/products/rstudio/download-server/), curl, git, postgres:
 ```bash
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
 sudo add-apt-repository 'deb  http://cran.stat.ucla.edu/bin/linux/ubuntu trusty/'
 sudo apt-get update
-sudo apt-get -y install r-base-core
-sudo apt-get -y install libcurl4-openssl-dev
-sudo apt-get -y install libcurl4-gnutls-dev
-sudo apt-get -y install libxml2-dev
-sudo apt-get -y install htop
-sudo apt-get -y install git
-sudo apt-get -y install gdebi-core libapparmor1
+sudo apt-get -y install r-base-core libcurl4-gnutls-dev libxml2-dev htop git gdebi-core libapparmor1 postgresql libpq-dev
+sudo su postgres -c "psql -c \"CREATE USER dwtools WITH PASSWORD 'dwtools_pass';\""
+sudo su postgres -c "createdb -O dwtools dwtools"
 wget http://download2.rstudio.org/rstudio-server-0.98.1091-amd64.deb # get latest version from: http://www.rstudio.com/products/rstudio/download-server/
 sudo gdebi -q -n rstudio-server-0.98.1091-amd64.deb
 sudo useradd -m -p $(openssl passwd -1 rstudio_user_pass) rstudio_user # add RStudio user
@@ -1759,12 +1754,13 @@ sudo useradd -m -p $(openssl passwd -1 rstudio_user_pass) rstudio_user # add RSt
 * Open RStudio in your local web browser: `http://amazon.instance.ip:8787/`
 * Install R packages:
 ```{r ec2_install_pkgs, echo=TRUE, eval=FALSE}
-install.packages(c("RCurl","devtools","knitr","microbenchmark","rmarkdown","DBI","dplyr","tidyr","RSQLite","optiRum"), repos="http://cran.stat.ucla.edu")
+install.packages(c("RCurl","devtools","knitr","microbenchmark","rmarkdown","DBI","dplyr","tidyr","RSQLite","RPostgreSQL","optiRum"), repos="http://cran.stat.ucla.edu")
 library(devtools)
 install_github("Rdatatable/data.table")
 install_github("jangorecki/dwtools")
 ```
-* Download [R_vs_SQL.Rmd](https://github.com/jangorecki/dwtools/blob/master/vignettes/R_vs_SQL.Rmd), confirm postgres is excluded, run `rmarkdown::render("R_vs_SQL.Rmd")`
+* Download [R_vs_SQL.Rmd](https://github.com/jangorecki/dwtools/blob/master/vignettes/R_vs_SQL.Rmd) benchmark script, manually or in RStudio `Tools -> Shell...` then `git clone https://github.com/jangorecki/dwtools.git`
+* Optionally edit script to setup volume, exclude postgres, then render script to html using `rmarkdown::render("dwtools/vignettes/R_vs_SQL.Rmd")`
 
 ```{r total_time, echo=FALSE, results='asis'}
 cat("Document produced in ",round(proc.time()[[3]] - global_start,2)," seconds.\n",sep="")
