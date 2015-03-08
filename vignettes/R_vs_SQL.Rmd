@@ -78,7 +78,7 @@ SQL names used:
 
 There will be no cold/hot runs, all goes in a single session, but input dataset is re-populated each time to have a fresh dataset for each test.  
 Some of the combinations will not be available, e.g. sqlite does not support *partition by*, sqlite and postgres does not support *pivot* and *unpivot*, base R and dplyr does not support *indices*, dplyr does not support *cross join*. Some others will use a workarounds because of open issues in some packages, each case is commented.  
-**Any database interface will include penalty of transferring data to/from R**. Currently defined SQLite and postgres uses native db drivers via DBI so the data transferring penalty is minimized as much as possible. In case of comparing DBI to ODBC it would be better to benchmark off-R in databases as ODBC may be a bottleneck.  
+**Any database interface will include penalty of transferring data to/from R**. Currently defined SQLite and postgres uses native db drivers via DBI so the data transferring penalty is minimized as much as possible. No tuning was made on database side (e.g. autovacuum). In case of comparing DBI to ODBC it would be better to benchmark off-R in databases as ODBC may be a bottleneck.  
 Only time will be measured, not the memory.
 
 ## Reproducibility notes
@@ -112,7 +112,7 @@ Setup databases to test (comment `"psql"` line to exclude postgres benchmark):
 # benchmark dbs
 db_test = c("sqlite","sqlite_memory")
 # optional dbs
-db_test <- c(db_test,"psql")
+#db_test <- c(db_test,"psql")
 ```
 
 ## Packages used
@@ -247,7 +247,7 @@ else if(N==5e6){
   W[["1"]][["geog_code"]] <- c("MS","NV","WY")
   W[["2"]][["cust_code"]] <- c("id046","id090","id062")
   W[["2"]][["geog_code"]] <- c("MI","NJ","IL")
-  W[["2"]][["curr_code"]] <- c("MS","NV","WY")
+  W[["2"]][["curr_code"]] <- c("NZD","MNT","XDG")
   W[["3"]][["prod_code"]] <- c(30974L,6470L,4264L)
   W[["3"]][["geog_code"]] <- c("WI","AZ","MA")
 }
@@ -1747,8 +1747,10 @@ sudo apt-get update
 sudo apt-get -y install r-base-core libcurl4-gnutls-dev libxml2-dev htop git gdebi-core libapparmor1 postgresql libpq-dev
 sudo su postgres -c "psql -c \"CREATE USER dwtools WITH PASSWORD 'dwtools_pass';\""
 sudo su postgres -c "createdb -O dwtools dwtools"
-wget http://download2.rstudio.org/rstudio-server-0.98.1091-amd64.deb # get latest version from: http://www.rstudio.com/products/rstudio/download-server/
-sudo gdebi -q -n rstudio-server-0.98.1091-amd64.deb
+wget http://download2.rstudio.org/rstudio-server-0.98.1103-amd64.deb # get latest version from: http://www.rstudio.com/products/rstudio/download-server/
+sudo gdebi -q -n gdebi rstudio-server-0.98.1103-amd64.deb
+sudo ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc /usr/local/bin # for rmarkdown from R console
+sudo ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc-citeproc /usr/local/bin
 sudo useradd -m -p $(openssl passwd -1 rstudio_user_pass) rstudio_user # add RStudio user
 ```
 * Open RStudio in your local web browser: `http://amazon.instance.ip:8787/`
