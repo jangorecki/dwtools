@@ -1,5 +1,6 @@
-# dwtools 0.8.3
+# dwtools 0.8.4
 
+- [x] Entity-attribute-value (EAV) value calculation helper
 - [ ] *R vs SQL* benchmark vignette
 - [x] new get.timing(), trunc.timing() functions for in-memory logs
 - [x] change in timing (non-db) approach
