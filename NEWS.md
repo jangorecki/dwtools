@@ -1,5 +1,6 @@
 # dwtools 0.8.4
 
+- [x] added JDBC support to db function
 - [x] Entity-attribute-value (EAV) value calculation helper
 - [ ] *R vs SQL* benchmark vignette
 - [x] new get.timing(), trunc.timing() functions for in-memory logs

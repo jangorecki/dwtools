@@ -6,17 +6,19 @@
 #' @keywords internal
 db_dict <- function(){
   db.dict = data.table(
-    drvName = c("SQLite","PostgreSQL","MySQL","Oracle","ODBC","csv"),
-    package = c("RSQLite","RPostgreSQL","RMySQL","ROracle","RODBC","data.table"),
+    drvName = c("SQLite","PostgreSQL","MySQL","Oracle","JDBC","ODBC","csv"),
+    package = c("RSQLite","RPostgreSQL","RMySQL","ROracle","RJDBC","RODBC","data.table"),
     write = list(
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE, append = TRUE),
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE, append = TRUE),
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE, append = TRUE),
       function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE, append = TRUE),
+      function(conn, name, value) dbWriteTable(conn=conn, name=name, value=value, row.names=FALSE, append = TRUE, overwrite = FALSE),
       function(conn, name, value) as.logical(sqlSave(channel=conn, dat=value, tablename=name, rownames=FALSE, append = TRUE)),
       function(conn, name, value) if(is.null(write.table(x=value, file=name, row.names=FALSE, sep=",", dec=".", append=file.exists(name), col.names=!file.exists(name), qmethod="double"))) TRUE else FALSE
     ),
     read = list(
+      function(conn, name) dbReadTable(conn=conn, name=name),
       function(conn, name) dbReadTable(conn=conn, name=name),
       function(conn, name) dbReadTable(conn=conn, name=name),
       function(conn, name) dbReadTable(conn=conn, name=name),
@@ -29,6 +31,7 @@ db_dict <- function(){
       function(conn, statement) dbGetQuery(conn=conn, statement=statement),
       function(conn, statement) dbGetQuery(conn=conn, statement=statement),
       function(conn, statement) dbGetQuery(conn=conn, statement=statement),
+      function(conn, statement) dbGetQuery(conn=conn, statement=statement),
       function(conn, statement) sqlQuery(channel=conn, query=statement),
       function(conn, statement) stop("not possible to `get` on csv, provide filename to `x` to invoke `read` instead of `get`", call.=FALSE)
     ),
@@ -37,12 +40,14 @@ db_dict <- function(){
       function(conn, statement) dbSendQuery(conn=conn, statement=statement),
       function(conn, statement) dbSendQuery(conn=conn, statement=statement),
       function(conn, statement) dbSendQuery(conn=conn, statement=statement),
+      function(conn, statement) dbSendUpdate(conn=conn, statement=statement),
       function(conn, statement) sqlQuery(channel=conn, query=statement),
       function(conn, statement) stop("not possible to `send` to csv", call.=FALSE)
     ),
     tablename = list(
       function(x){ r = strsplit(x,".",TRUE)[[1]]; if(length(r) > 2) stop("Table name should contain at most one dot for schema.table mapping, in case of SQLite schema will be removed") else r[length(r)] },
       function(x){ r = strsplit(x,".",TRUE)[[1]]; if(length(r) > 2) stop("Table name should contain at most one dot for schema.table mapping") else r },
+      function(x) x,
       function(x) x,
       function(x) x,
       function(x) x,
@@ -54,9 +59,11 @@ db_dict <- function(){
       function(DT) DT,
       function(DT) DT,
       function(DT) DT,
+      function(DT) DT,
       function(DT) DT
     ),
     postprocess = list(
+      function(DT) DT,
       function(DT) DT,
       function(DT) DT,
       function(DT) DT,

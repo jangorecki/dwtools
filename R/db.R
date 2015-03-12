@@ -106,6 +106,7 @@ auto.table.name <- function(x, ncol=getOption("dwtools.db.auto.table.name.ncol")
 #' Below are the per driver name limitations:
 #' \itemize{
 #' \item \code{csv}: No \strong{get} and \strong{send} actions. Extension \emph{.csv} is automatically added to provided table name character (or to \link{auto.table.name} if table name was not provided).
+#' \item \code{JDBC}: Might not support \emph{append} for all jdbc drivers.
 #' }
 #' @section Auto table name:
 #' If writing to db and table name is missing or NULL then the \link{auto.table.name} will be used, auto generated tablename can be catched for later use by \code{(attr(DT,"tablename",TRUE)}, read note section.

@@ -63,6 +63,7 @@ SQL send statements should contains spaces, e.g. sqlite \code{.tables} command n
 Below are the per driver name limitations:
 \itemize{
 \item \code{csv}: No \strong{get} and \strong{send} actions. Extension \emph{.csv} is automatically added to provided table name character (or to \link{auto.table.name} if table name was not provided).
+\item \code{JDBC}: Might not support \emph{append} for all jdbc drivers.
 }
 }
 
