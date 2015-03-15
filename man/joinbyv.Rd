@@ -17,7 +17,7 @@ joinbyv(master, join, by, col.subset, row.subset, nomatch, allow.cartesian)
 
 \item{row.subset}{list of \link{expression}s to be passed to corresponding \emph{join} data.table \code{i} argument. Default: \code{as.list(rep(TRUE,length(join)))}. To subset result \emph{master} data.table, use \emph{row.subset} together with corresponding \emph{nomatch} argument equal to \code{0} (inner join). By default when providing \emph{row.subset} list element the corresponding \emph{nomatch} argument will be changed to \code{0} to perform inner join, otherwise it will be \code{getOption("datatable.nomatch")}. If you really want to do outer join to already filtered \emph{join} data.table you need to override corresponding \emph{nomatch} argument for \code{NA}. Cross table expressions and not supported inside \emph{joinbyv}.}
 
-\item{nomatch}{list of integer scalars \code{NA} or \code{0} elements corresponding \code{join} data.tables. Default: \code{lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))}. Indicates outer join for \code{NA} and inner join for \code{0}. When \emph{data.table} extends allowed argument in the \code{getOption("datatable.nomatch")} then it should accept not only integer scalar but any value supported by \emph{data.table} as \emph{nomatch} argument.}
+\item{nomatch}{list of integer scalars \code{NA} or \code{0} elements corresponding \code{join} data.tables. Default: \code{lapply(row.subset, function(x) if(is.language(x)) 0 else getOption("datatable.nomatch"))}. Indicates outer join for \code{NA} and inner join for \code{0}. When \emph{data.table} extends allowed argument in the \code{getOption("datatable.nomatch")} then it should accept not only integer scalar but any value supported by \emph{data.table} as \emph{nomatch} argument.}
 
 \item{allow.cartesian}{list of logical scalar elements corresponding to \code{join} data.tables to define which of the joins are allowed to do cartesian product. Default: \code{as.list(rep(getOption("datatable.allow.cartesian"),length(join)))}.}
 }
@@ -36,16 +36,16 @@ Possibly the performance might be improved after implementing data.table FR #691
 \examples{
 suppressPackageStartupMessages(library(dwtools))
 
-X = dw.populate() # scenario="star"
+X <- dw.populate() # scenario="star"
 lapply(X, head)
 
-DT = joinbyv(master = X$SALES,
-             join = list(time = X$TIME, product = X$PRODUCT, currency = X$CURRENCY),
-             by = list("time_code","prod_code","curr_code"))
+DT <- joinbyv(master = X$SALES,
+              join = list(time = X$TIME, product = X$PRODUCT, currency = X$CURRENCY),
+              by = list("time_code","prod_code","curr_code"))
 str(DT)
 
 # joinbyv including timing
-DT = timing(
+DT <- timing(
   joinbyv(master = X$SALES,
           join = list(time = X$TIME, product = X$PRODUCT, currency = X$CURRENCY),
           by = list("time_code","prod_code","curr_code"))

@@ -5,7 +5,7 @@
 #' @param by list of character vectors. Default: \code{lapply(join, key)}. Required when not all of \emph{join} data.tables has key.
 #' @param col.subset list of character vectors. Default: \code{lapply(join, names)}.
 #' @param row.subset list of \link{expression}s to be passed to corresponding \emph{join} data.table \code{i} argument. Default: \code{as.list(rep(TRUE,length(join)))}. To subset result \emph{master} data.table, use \emph{row.subset} together with corresponding \emph{nomatch} argument equal to \code{0} (inner join). By default when providing \emph{row.subset} list element the corresponding \emph{nomatch} argument will be changed to \code{0} to perform inner join, otherwise it will be \code{getOption("datatable.nomatch")}. If you really want to do outer join to already filtered \emph{join} data.table you need to override corresponding \emph{nomatch} argument for \code{NA}. Cross table expressions and not supported inside \emph{joinbyv}.
-#' @param nomatch list of integer scalars \code{NA} or \code{0} elements corresponding \code{join} data.tables. Default: \code{lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))}. Indicates outer join for \code{NA} and inner join for \code{0}. When \emph{data.table} extends allowed argument in the \code{getOption("datatable.nomatch")} then it should accept not only integer scalar but any value supported by \emph{data.table} as \emph{nomatch} argument.
+#' @param nomatch list of integer scalars \code{NA} or \code{0} elements corresponding \code{join} data.tables. Default: \code{lapply(row.subset, function(x) if(is.language(x)) 0 else getOption("datatable.nomatch"))}. Indicates outer join for \code{NA} and inner join for \code{0}. When \emph{data.table} extends allowed argument in the \code{getOption("datatable.nomatch")} then it should accept not only integer scalar but any value supported by \emph{data.table} as \emph{nomatch} argument.
 #' @param allow.cartesian list of logical scalar elements corresponding to \code{join} data.tables to define which of the joins are allowed to do cartesian product. Default: \code{as.list(rep(getOption("datatable.allow.cartesian"),length(join)))}.
 #' @details 
 #' Any \code{NULL} inside the lists provided to \emph{by, col.subset, row.subset, nomatch, allow.cartesian} will be replaced by the default value for particular \code{NULL} element. Therefore it is possible to pass partially filled lists, length of each must match to length of \emph{join}, example \code{col.subset=list(NULL,c("join2_col1","join2_col2"),NULL,c("join4_col1"))}.
@@ -30,7 +30,7 @@ joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.car
   if(missing(by)) by = lapply(join, key)
   if(missing(col.subset)) col.subset = lapply(join, names)
   if(missing(row.subset)) row.subset = as.list(rep(TRUE,length(join)))
-  if(missing(nomatch)) nomatch = lapply(row.subset, function(x) if(is.expression(x)) 0 else getOption("datatable.nomatch"))
+  if(missing(nomatch)) nomatch = lapply(row.subset, function(x) if(is.language(x)) 0 else getOption("datatable.nomatch"))
   if(missing(allow.cartesian)) allow.cartesian = as.list(rep(getOption("datatable.allow.cartesian"),length(join)))
   
   # basic input check: all others
@@ -58,7 +58,7 @@ joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.car
   nomatch <- mapply(row.subset = row.subset, nomatch = nomatch, 
                     FUN = function(row.subset, nomatch){
                       return(if(is.null(nomatch)){
-                        if(is.expression(row.subset)) 0 else getOption("datatable.nomatch")
+                        if(is.language(row.subset)) 0 else getOption("datatable.nomatch")
                       } else nomatch)
                     }, SIMPLIFY = FALSE)
   allow.cartesian <- lapply(allow.cartesian,
@@ -93,7 +93,7 @@ joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.car
     if(!identical(key(master),key(join))) setkeyv(master,key(join)) # resorting issue to each join, possible improvement after FR: #691, #692.
     # join
     join[tryCatch(expr = eval(row.subset), # row.subset eval expression error handling
-                  error = function(e) stop(paste0("Provided 'row.subset' expression results error: ",paste(as.character(c(e$call,e$message)),collapse=" : ")),call.=FALSE)),
+                  error = function(e) stop(paste("Provided 'row.subset' expression results:",as.character(e)),call.=FALSE)),
          .SD, # col.subset
          .SDcols = unique(c(key(join),col.subset))
          ][master, # join master 
@@ -109,5 +109,5 @@ joinbyv <- function(master, join, by, col.subset, row.subset, nomatch, allow.car
     master <- joinby(master = master, join[[i]], by[[i]], col.subset[[i]], row.subset[[i]], nomatch[[i]], allow.cartesian[[i]])
   }
   # clean last used key
-  setkeyv(master,NULL)
+  setkeyv(master,NULL)[]
 }
