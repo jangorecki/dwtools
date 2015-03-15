@@ -127,6 +127,15 @@ db <- function(x, ..., key,
                timing = getOption("dwtools.timing"),
                verbose = getOption("dwtools.verbose")){
   
+  ####
+  ###   Start by folding braclets
+  ####
+  ## 
+  ## For vectorized input this function will call self again in lapply
+  ## When using timing=TRUE this allows to retain and log substituted expressions
+  ## for each of the elements in input vector separately
+  ## 
+  
   if(is.null(.db.batch.action)){
     
     ### validate input
@@ -204,7 +213,7 @@ db <- function(x, ..., key,
     
     if(!isTRUE(timing) && verbose == 0L && length(conn.name)==1L) .db.batch.action <- action
     
-  } # run only once for db(), skip on on vectorized input
+  } # run only once for db(), skip on vectorized input
   else{ # single process
     # same as above but no validate input and no recycle
     dots = list(...) # magic ui decoder
@@ -247,9 +256,9 @@ db <- function(x, ..., key,
       return(r)
     }
     r <- devtools::with_options( # using options it is possible to have cleaner expression field in timing logs
-      new=c("dwtools.db.batch.action"=action, # used in inner db(), NOT ONLY in pretty_log_on_timing where setting options would be redundant
-            "dwtools.timing"=FALSE),
-      code=lapply(setNames(1:length(conn.name),conn.name), pretty_log_on_timing, x=x, name=name, conn.name=conn.name, key=key, .timing=timing, verbose=verbose)
+      new = c("dwtools.db.batch.action"=action, # used in inner db(), NOT ONLY in pretty_log_on_timing where setting options would be redundant
+              "dwtools.timing"=FALSE),
+      code = lapply(setNames(seq_len(length(conn.name)),conn.name), pretty_log_on_timing, x=x, name=name, conn.name=conn.name, key=key, .timing=timing, verbose=verbose)
     )
     if(action=="write"){
       tbls <- unlist(r)
