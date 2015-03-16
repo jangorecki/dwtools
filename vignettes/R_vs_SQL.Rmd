@@ -1748,7 +1748,7 @@ sudo apt-get -y install r-base-core libcurl4-gnutls-dev libxml2-dev htop git gde
 sudo su postgres -c "psql -c \"CREATE USER dwtools WITH PASSWORD 'dwtools_pass';\""
 sudo su postgres -c "createdb -O dwtools dwtools"
 wget http://download2.rstudio.org/rstudio-server-0.98.1103-amd64.deb # get latest version from: http://www.rstudio.com/products/rstudio/download-server/
-sudo gdebi -q -n gdebi rstudio-server-0.98.1103-amd64.deb
+sudo gdebi rstudio-server-0.98.1103-amd64.deb
 sudo ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc /usr/local/bin # for rmarkdown from R console
 sudo ln -s /usr/lib/rstudio-server/bin/pandoc/pandoc-citeproc /usr/local/bin
 sudo useradd -m -p $(openssl passwd -1 rstudio_user_pass) rstudio_user # add RStudio user
