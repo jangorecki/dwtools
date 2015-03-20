@@ -37,7 +37,7 @@ db(x, ..., key, .db.preprocess = getOption("dwtools.db.preprocess"),
 In case of \strong{write / read / get} the data.table object (possibly with some extra attributes). In case of \strong{send} action the send query results.
 }
 \description{
-Common db interface for DBI, RODBC and other custom defined off-memory storage. So far it was tested with SQLite, postgres and csv.
+Common db interface for DBI, RJDBC, RODBC and other custom defined off-memory storage.
 }
 \details{
 Function is designed to be slim and chainable in data.table \code{`[`} operator. It accept vectorized input for all combinations of character arguments, see \emph{Multiple tables/connections} section.
@@ -86,7 +86,6 @@ suppressPackageStartupMessages(library(dwtools))
 
 ##### define your connections
 # csv and SQLite works out of the box without configuration outside of R.
-# tested on csv, sqlite, postgres, should also work on any DBI and RODBC connection.
 # examples are on three instances of sqlite and a csv.
 
 library(RSQLite) # install.packages("RSQLite")

@@ -1,6 +1,6 @@
 #' @title Append connection to dictionary
 #' @param \dots named connections to append on current connections dictionary at \code{getOption('dwtools.db.conns')}.
-#' @return invisibly direct return from \code{options("dwtools.db.conns"=...}.
+#' @return Invisibly direct return from \code{options("dwtools.db.conns"=...)} - the previous value for an option.
 #' @export
 #' @example tests/example-add_db_conns.R
 add.db.conns <- function(...){

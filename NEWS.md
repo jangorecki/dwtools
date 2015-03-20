@@ -31,7 +31,7 @@
 
 - [x] db simplified interface
   - [x] tested on csv (default), SQLite, postgres
-  - [ ] should works on any DBI/ODBC driver (TO DO test ODBC)
+  - [x] should works on any DBI/ODBC driver
   - [x] setkey by col names or col positions
   - [x] timing for vectorized args
   - [x] auto timing

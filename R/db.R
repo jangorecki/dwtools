@@ -78,7 +78,7 @@ auto.table.name <- function(x, ncol=getOption("dwtools.db.auto.table.name.ncol")
 # db -------------------------------------------------------------------
 
 #' @title Simple database interface
-#' @description Common db interface for DBI, RODBC and other custom defined off-memory storage. So far it was tested with SQLite, postgres and csv.
+#' @description Common db interface for DBI, RJDBC, RODBC and other custom defined off-memory storage.
 #' @param x data.table (to save in db) or character of table names or character of sql commands.
 #' @param \dots if \code{x} is data.table then \dots expects character table names and character connection names else \dots expects only character connection names.
 #' @param key character or integer, character vector to be used to set key or integer columns position to setkey.

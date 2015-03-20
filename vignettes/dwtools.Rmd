@@ -51,7 +51,7 @@ lapply(X,head,2) # preview of data
 #### `db`: simple db interface
 
 Simple database interface, an extraction and loading processes. Designed to use in data.table chaining.  
-Unifies database connectors to DBI, JDBC, ODBC (not tested) or csv file.  
+Unifies database connectors to DBI, JDBC, ODBC or csv file.  
 Supports managing of multiple db connections, below one sqlite, one h2 db, and one csv file.  
 
 ```{r db_conn, message=FALSE, warning=FALSE}
@@ -222,6 +222,7 @@ For extended logging solution see [logR](https://github.com/jangorecki/logR) pac
 - log process metadata: in/our count, tags.
 - logging to any database supported by `dwtools::db` function.
 - email notification on warnings/error.
+- supports parallel processing.
 
 ---
 

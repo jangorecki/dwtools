@@ -4,7 +4,6 @@ suppressPackageStartupMessages(library(dwtools))
 
 ##### define your connections
 # csv and SQLite works out of the box without configuration outside of R.
-# tested on csv, sqlite, postgres, should also work on any DBI and RODBC connection.
 # examples are on three instances of sqlite and a csv.
 
 library(RSQLite) # install.packages("RSQLite")

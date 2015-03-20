@@ -10,7 +10,7 @@ add.db.conns(...)
 \item{\dots}{named connections to append on current connections dictionary at \code{getOption('dwtools.db.conns')}.}
 }
 \value{
-invisibly direct return from \code{options("dwtools.db.conns"=...}.
+Invisibly direct return from \code{options("dwtools.db.conns"=...)} - the previous value for an option.
 }
 \description{
 Append connection to dictionary
