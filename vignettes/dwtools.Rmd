@@ -7,7 +7,7 @@ output:
     highlight: pygments
     css : css/bootstrap.css
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{dwtools}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
@@ -187,7 +187,7 @@ db(sql, timing=TRUE)
 db("SELECT * FROM v_1_minus_2 UNION ALL SELECT * FROM v_2_minus_1", timing=TRUE)
 
 # drop all existing views
-db("select name from sqlite_master where type = 'view'")[,paste("DROP VIEW",name)] %>% db
+db("SELECT name FROM sqlite_master WHERE type = 'view'")[,paste("DROP VIEW",name)] %>% db
 
 # alternatively whole process on the R side, wrapped with timing
 timing(
@@ -298,8 +298,8 @@ Takes single dataset on input and detects hierarchies by cardinality of unique g
 DT <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
 names(DT)
 dw <- build_hierarchy(DT, factname="fact_sales")
-sapply(dw$tables,ncol)
-sapply(dw$tables,nrow)
+sapply(dw$tables,ncol) # number of columns in dimension tables or fact table, including keys
+sapply(dw$tables,nrow) # number of rows in dimension tables or fact table, including keys
 ```
   
 ---

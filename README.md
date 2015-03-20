@@ -1,5 +1,6 @@
+# dwtools <!-- [![Build Status](https://travis-ci.org/jangorecki/dwtools.png?branch=master)](https://travis-ci.org/jangorecki/dwtools) --!>
 
-**Current version: [0.8.3.8](NEWS.md)**  
+**Current version:** [0.8.3.8](NEWS.md)**  
 
 Data Warehouse and data integration helpers. Unifies database connectors to DBI, JDBC, ODBC, CSV. Easy multiple simultaneous databases connections managing. Data modelling helpers, denormalization of star schema and snowflake schema, basic normalization. And few more.
 
@@ -12,7 +13,7 @@ install_github("jangorecki/dwtools")
 
 ## Features
 
-For basic examples of each function see [Introduction](vignettes/dwtools.Rmd) vignette.
+For basic examples of each function see [introduction vignette](https://cdn.rawgit.com/jangorecki/b02bdfb7a2bdb010f6cc/raw/0ebc115ad9e8e8682e30f455f00179f7d22705d0/dwtools.html).
 
 - [db](tests/example-db.R): simple database interface accross multiple various connections.
 - [timing](tests/example-timing.R): measure function timing and process metadata, for extended logging see [logR](https://github.com/jangorecki/logR) package.
