@@ -1,7 +1,7 @@
 
 **Current version: [0.8.3.8](NEWS.md)**  
 
-Data Warehouse and data integration helpers. Unifies database connectors to DBI, jdbc, odbc, csv. Easy multiple simultaneous databases connections managing. Data modelling helpers, denormalization of star schema and snowflake schema, basic normalization. And few more.
+Data Warehouse and data integration helpers. Unifies database connectors to DBI, JDBC, ODBC, CSV. Easy multiple simultaneous databases connections managing. Data modelling helpers, denormalization of star schema and snowflake schema, basic normalization. And few more.
 
 ## Installation
 
