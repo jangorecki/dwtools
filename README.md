@@ -1,4 +1,4 @@
-# dwtools <!-- [![Build Status](https://travis-ci.org/jangorecki/dwtools.png?branch=master)](https://travis-ci.org/jangorecki/dwtools) --!>
+# dwtools
 
 **Current version:** [0.8.3.8](NEWS.md)**  
 
