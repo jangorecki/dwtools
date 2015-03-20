@@ -1,0 +1,374 @@
+---
+title: "Introduction to dwtools"
+date: '`r Sys.Date()`'
+output: 
+  rmarkdown::html_document:
+    theme: spacelab
+    highlight: pygments
+    css : css/bootstrap.css
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r, echo = FALSE, message = FALSE}
+knitr::opts_chunk$set(
+  comment = "#",
+  error = FALSE,
+  tidy = FALSE,
+  cache = FALSE,
+  collapse = TRUE)
+```
+
+[dwtools](https://github.com/jangorecki/dwtools) is R package focused on Data Warehouse-like data processing. The package heavily relies on the [data.table](https://github.com/Rdatatable/data.table/wiki) and [DBI](http://cran.r-project.org/web/packages/DBI/index.html)/[RJDBC](http://cran.r-project.org/web/packages/RJDBC/index.html)/[RODBC](http://cran.r-project.org/web/packages/RODBC/index.html). These packages are employed as *transformation* and *extraction/loading* processors.  
+
+---
+
+## Features
+
+Below are the most basic examples of `dwtools` functions.  
+
+```{r init, message=FALSE}
+library(devtools)
+library(magrittr)
+library(dwtools)
+```
+
+Populate data in *star schema* model. Generates list of 5 dimension tables and 1 fact table.  
+We will use it in the next examples.  
+
+```{r dw.populate}
+X <- dw.populate(N=1e3, scenario="star")
+sapply(X,nrow) # volume of each
+lapply(X,head,2) # preview of data
+```
+
+---
+
+### Data processing related
+  
+#### `db`: simple db interface
+
+Simple database interface, an extraction and loading processes. Designed to use in data.table chaining.  
+Unifies database connectors to DBI, JDBC, ODBC (not tested) or csv file.  
+Supports managing of multiple db connections, below one sqlite, one h2 db, and one csv file.  
+
+```{r db_conn, message=FALSE, warning=FALSE}
+library(RSQLite) # install.packages("RSQLite")
+library(RH2) # install.packages("RH2")
+sqlite1 <- list(drvName = "SQLite", conn = DBI::dbConnect(SQLite(), ":memory:"))
+h21 <- list(drvName = "JDBC", conn = RJDBC::dbConnect(H2(), "jdbc:h2:mem:"))
+csv1 <- list(drvName = "csv")
+options("dwtools.db.conns" = list(sqlite1=sqlite1, h21=h21, csv1=csv1))
+```
+  
+`db` function accepts vector of sql statements / table names to allow batch processing.  
+All `db` function calls can be logged by via argument `timing=TRUE`, or automatically using `options("dwtools.timing"=TRUE)`.  
+
+```{r db}
+SALES <- X$SALES
+GEOGRAPHY <- X$GEOGRAPHY
+CURRENCY <- X$CURRENCY
+
+### Basic db syntax
+
+## read, query, send:
+# db( statement | tablename, connname )
+
+## write to db:
+# db( DT, tablename, connname )
+
+# write to db (default-first connection)
+db(SALES,"sales_table")
+# read from from db
+db("sales_table") %>% head(2)
+# query from db
+db("SELECT * FROM sales_table") %>% tail(2)
+# send to db
+db("DROP TABLE sales_table")
+
+### Vectorized input
+
+# write into 2 databases: sqlite and h2
+db(SALES,"sales_table",c("sqlite1","h21"))
+
+# write geography data.table into multiple connections: h2 and csv
+db(GEOGRAPHY,"geography",c("h21","csv1"))
+
+### Mirror copy table from h2 into two connections, various table names
+
+# chaining, save sqlite1
+db("geography", "h21")[, db(.SD, "geography_alt", "sqlite1")] %>% invisible
+# piping, save sqlite1 and csv
+db("geography", "h21") %>% db(., c("geography","geography_alt"), c("sqlite1","csv1"))
+
+# or use dbCopy wrapper
+dbCopy("geography", "h21", "geography_alt_alt", "sqlite1")
+
+### Join across databases
+
+# join sqlite fact table to h2 geography dimension
+db("sales_table", "sqlite1", key="geog_code")[
+  db("geography", "h21", key="geog_code")] %>% head(2)
+
+# join h2 fact table to sqlite geography dimension
+db("sales_table", "h21", key="geog_code")[
+  db("geography", "csv1", key="geog_code")] %>% head(2)
+
+### Obviously join database side fully supported
+
+db("SELECT * FROM sales_table sales JOIN geography ON sales.geog_code = geography.geog_code") %>% head(2)
+
+### ETL: fetch from various databases, join, aggregate and save to db
+
+# grab tables from dbs
+geog <- db("geography", "h21", key="geog_code")
+sales <- db("sales_table", "sqlite1", key="geog_code")
+
+# do transformation
+sales_by_division_vs_region <- geog[sales
+     ][,region_value := sum(value,na.rm=TRUE),
+       .(geog_region_name)
+       ][,.(value = sum(value,na.rm=TRUE),
+            value_to_region = sum(value,na.rm=TRUE) / region_value[1L]),
+         .(geog_region_name,geog_division_name)]
+
+# save to table to sqlite
+db(sales_by_division_vs_region,"sales_by_division_vs_region")
+
+# check data
+db("SELECT * FROM sales_by_division_vs_region") %>% head(2)
+
+### The same ETL process but in one data.table chain
+
+db("geography", "h21", key="geog_code")[
+  db("sales_table", "sqlite1", key="geog_code")
+  ][,region_value := sum(value,na.rm=TRUE),
+    .(geog_region_name)
+    ][,.(value = sum(value,na.rm=TRUE),
+         value_to_region = sum(value,na.rm=TRUE) / region_value[1L]),
+      .(geog_region_name,geog_division_name)
+      ][,db(.SD,"sales_by_division_vs_region_2")] %>% invisible
+```
+   
+---
+
+#### `data.equal.data.table`: data equality check
+
+Databases stores the data with no row order, so to check equality of data in tables we must ignore row order.  
+SQLite does not supports analytics functions so for tidiness I will use views.  
+
+```{r data.equal.data.table}
+# aggregate with count to handle duplicate rows
+sql <- "CREATE VIEW v_division_by_region AS 
+        SELECT geog_region_name, geog_division_name, value, value_to_region, COUNT(*) cnt
+        FROM sales_by_division_vs_region 
+        GROUP BY geog_region_name, geog_division_name, value, value_to_region"
+sql <- c(sql, "CREATE VIEW v_division_by_region_2 AS
+               SELECT geog_region_name, geog_division_name, value, value_to_region, COUNT(*) cnt
+               FROM sales_by_division_vs_region_2 
+               GROUP BY geog_region_name, geog_division_name, value, value_to_region")
+
+# except statements
+sql <- c(sql, "CREATE VIEW v_1_minus_2 AS
+               SELECT * FROM v_division_by_region
+               EXCEPT
+               SELECT * FROM v_division_by_region_2")
+sql <- c(sql, "CREATE VIEW v_2_minus_1 AS
+               SELECT * FROM v_division_by_region_2
+               EXCEPT 
+               SELECT * FROM v_division_by_region")
+
+# create all 4 views, turn on timing
+db(sql, timing=TRUE)
+
+# for exact data this should return 0 rows
+db("SELECT * FROM v_1_minus_2 UNION ALL SELECT * FROM v_2_minus_1", timing=TRUE)
+
+# drop all existing views
+db("select name from sqlite_master where type = 'view'")[,paste("DROP VIEW",name)] %>% db
+
+# alternatively whole process on the R side, wrapped with timing
+timing(
+  data.equal.data.table(
+    db("sales_by_division_vs_region"),
+    db("sales_by_division_vs_region_2")
+  )
+)
+```
+
+---
+
+### Maintenance helpers
+
+#### `timing`
+
+Precise measure timing plus metadata such in/out count, tags, optionally log to db.  
+
+```{r timing}
+timing({
+  Sys.sleep(1.123)
+  "my result"
+})
+get.timing(40)[,.SD,.SDcols=-c("dwtools_session","in_n","user_self","sys_self","tag")] # recent timings
+```
+
+
+For extended logging solution see [logR](https://github.com/jangorecki/logR) package that allows:
+
+- transactional logging: insert before evaluation, update after completion.
+- warnings and error catching.
+- log process metadata: in/our count, tags.
+- logging to any database supported by `dwtools::db` function.
+- email notification on warnings/error.
+
+---
+
+#### `pkgsVersion`: multiple pkgs version managing
+
+Handy wrapper to compare packages version across libraries.  
+Makes easy to manage multiple environments.  
+
+```{r pkgsVersion, eval=FALSE}
+lib.dev <- "lib_dev"
+dir.create(lib.dev,FALSE)
+lib.prod <- "lib_prod"
+dir.create(lib.prod,FALSE)
+
+# install to production
+install.packages("R6", lib = lib.prod, repos="http://cran.stat.ucla.edu")
+# install to dev
+with_lib(paste(getwd(), lib.dev, sep="/"), install_github("wch/R6"))
+
+# load from different environments
+library("R6", lib.loc = lib.prod) # for dev use: lib.loc = lib.dev
+
+# manage versions
+pkgs <- c("DBI","data.table","devtools","dwtools","logR","R6")
+pkgsVersion(pkgs, libs = list(user = .libPaths()[1L],
+                              dev = lib.dev,
+                              prod = lib.prod))
+```
+
+```{r pkgsVersion_print}
+#           pkg    user        dev  prod
+# 1:        DBI   0.3.1         NA    NA
+# 2: data.table   1.9.5         NA    NA
+# 3:   devtools   1.7.0         NA    NA
+# 4:    dwtools 0.8.3.6         NA    NA
+# 5:       logR   1.9.9         NA    NA
+# 6:         R6   2.0.1 2.0.0.9000 2.0.1
+```
+
+---
+
+### Data modelling related
+
+#### `joinbyv`: batch join
+
+Batch join multiple tables into one master table.  
+Denormalization of *star schema* and *snowflake schema* to flat fact table.  
+  
+```{r joinbyv}
+DT <- joinbyv(
+  master = X$SALES,
+  join = list(customer = X$CUSTOMER,
+              product = X$PRODUCT,
+              geography = X$GEOGRAPHY,
+              time = X$TIME,
+              currency = X$CURRENCY),
+  col.subset = list(c("cust_active"),
+                    c("prod_group_name","prod_family_name"),
+                    c("geog_region_name"),
+                    c("time_month_name"),
+                    NULL)
+)
+print(names(DT)) # all columns in result
+```
+  
+---
+  
+#### `build_hierarchy`: detect basic hierarchy
+
+Takes single dataset on input and detects hierarchies by cardinality of unique groupings of all possible variable pairs. Returns star schema: one fact table and multiple dimension tables. Handle only basic cases.  
+
+```{r build_hierarchy}
+DT <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
+names(DT)
+dw <- build_hierarchy(DT, factname="fact_sales")
+sapply(dw$tables,ncol)
+sapply(dw$tables,nrow)
+```
+  
+---
+  
+#### `eav`: Entity-Attribute-Value manipulation
+
+[EAV](https://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model) modeled data calculation, intelligent wrapper for `dcast %>% eval(j) %>% melt`.  
+
+```{r eav}
+DT <- X$SALES[,.(prod_code,time_code,amount,value)
+              ][,melt(.SD, id=1:2,variable.name='measure',value.name='value')
+                ] # prepare EAV
+setkey(DT,prod_code,time_code,measure)
+DT %>% head(4)
+eav(DT, quote(avg_price:=value/amount)) %>% head(6)
+```
+  
+---  
+  
+### Reporting related
+  
+#### shinyBI
+
+Early version of hierarchical data BI app. You can preview [live demo](https://jangorecki.shinyapps.io/shinyBI/) of the app, 100k rows, slow public hosting.
+
+```{r shinyBI, eval=FALSE}
+shiny::runApp(system.file("shinyBI", package="dwtools"))
+```
+  
+---
+  
+#### `idxv`: user defined pre-calc indices
+
+DT binary search on multiple keys, also known as *Nth setkey*.  
+Creates custom indices for a data.table object. May require lot of memory.  
+Make sense on heavy DT quering with filtering on various columns.  
+Possibly to remove after [data.table#1067](https://github.com/Rdatatable/data.table/issues/1067) resolved.
+
+```{r idxv}
+DT <- X$SALES
+# create some particular indices
+Idx <- list(
+  c("cust_code", "prod_code", "geog_code"),
+  c("cust_code", "geog_code", "curr_code"),
+  c(2:3)
+)
+IDX <- idxv(DT, Idx)
+
+# binary search on first index # DT[cust_code=="id014" & prod_code==2L & geog_code=="VA"]
+DT[CJI(IDX,"id014",2L,"VA")] %>% head(2)
+# binary search on second index # DT[cust_code=="id012" & geog_code=="WV" & curr_code=="ARS"]
+DT[CJI(IDX,"id012",TRUE,"WV",TRUE,"ARS")] %>% head(2)
+# binary search on third index # DT[prod_code==5L & geog_code=="NV"]
+DT[CJI(IDX,TRUE,5L,"NV")] %>% head(2)
+```
+  
+---
+
+### Others
+
+A brief comment on others functions in the package.  
+
+- `?dbCopy`: mirror copy tables
+- `?vwap`: aggregate tick trades data to OHLC including VWAP
+- `?anonymize`: anonymization by hashing sensitive data
+- `?sql.dt`: query data.table using data.table syntax but SQL args and its sequence
+
+```{r exit_cleanup, echo=FALSE, results='hide'}
+dbDisconnect(conn=sqlite1$conn)
+dbDisconnect(conn=h21$conn)
+file.remove(c("geography.csv","geography_alt.csv"))
+```
+  
