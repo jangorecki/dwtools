@@ -13,7 +13,7 @@ install_github("jangorecki/dwtools")
 
 ## Features
 
-For basic examples of each function see [introduction vignette](https://cdn.rawgit.com/jangorecki/b02bdfb7a2bdb010f6cc/raw/0ebc115ad9e8e8682e30f455f00179f7d22705d0/dwtools.html).
+For basic examples of each function see [introduction vignette](https://cdn.rawgit.com/jangorecki/b02bdfb7a2bdb010f6cc/raw/392f1e32e23443699d2481ca6d7aefab3fa15499/dwtools.html).
 
 - [db](tests/example-db.R): simple database interface accross multiple various connections.
 - [timing](tests/example-timing.R): measure function timing and process metadata, for extended logging see [logR](https://github.com/jangorecki/logR) package.
@@ -28,8 +28,7 @@ For basic examples of each function see [introduction vignette](https://cdn.rawg
 ## License
 
 GPL-3.  
-Donations are welcome and will be partially forwarded to dependencies of dwtools.  
-[19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN](https://blockchain.info/address/19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN)
+Donations are welcome and will be partially forwarded to dependencies of dwtools: [19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN](https://blockchain.info/address/19JRajumtMNU9h9Wvdpsnq13SRdZjfbLeN)
 
 ## Contact
 

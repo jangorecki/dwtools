@@ -64,7 +64,7 @@ options("dwtools.db.conns" = list(sqlite1=sqlite1, h21=h21, csv1=csv1))
 ```
   
 `db` function accepts vector of sql statements / table names to allow batch processing.  
-All `db` function calls can be logged by via argument `timing=TRUE`, or automatically using `options("dwtools.timing"=TRUE)`.  
+All `db` function calls can be logged by argument `timing=TRUE`, or automatically using `options("dwtools.timing"=TRUE)`.  
 
 ```{r db}
 SALES <- X$SALES
@@ -79,77 +79,87 @@ CURRENCY <- X$CURRENCY
 ## write to db:
 # db( DT, tablename, connname )
 
-# write to db (default-first connection)
-db(SALES,"sales_table")
+# write to db - default connection is the first defined
+db(SALES,"sales_fact")
+
 # read from from db
-db("sales_table") %>% head(2)
+db("sales_fact") %>% head(2)
+
 # query from db
-db("SELECT * FROM sales_table") %>% tail(2)
+db("SELECT * FROM sales_fact") %>% tail(2)
+
 # send to db
-db("DROP TABLE sales_table")
+db("DROP TABLE sales_fact")
 
-### Vectorized input
+### Vectorized input - recycling on tablen ame and connection name
 
-# write into 2 databases: sqlite and h2
-db(SALES,"sales_table",c("sqlite1","h21"))
+# write into two databases: sqlite and h2
+db(SALES,"sales_fact",c("sqlite1","h21"))
 
-# write geography data.table into multiple connections: h2 and csv
-db(GEOGRAPHY,"geography",c("h21","csv1"))
+# write into two tables various names in two connections
+db(GEOGRAPHY,c("geography_dim","h2_geography"),c("sqlite1","h21"))
+
+# read data from multiple connections, return list
+l <- db("sales_fact",c("sqlite1","h21"))
+sapply(l, nrow) # count of each
+
+# read data from multiple tables, return list
+l <- db(c("SELECT * FROM geography_dim","SELECT geog_code, geog_region_name FROM geography_dim"))
+sapply(l, ncol) # number of columns
 
 ### Mirror copy table from h2 into two connections, various table names
 
-# chaining, save sqlite1
-db("geography", "h21")[, db(.SD, "geography_alt", "sqlite1")] %>% invisible
+# chaining, save h2
+db("geography_dim")[, db(.SD, "h2_geography_alt", "h21")] %>% invisible
 # piping, save sqlite1 and csv
-db("geography", "h21") %>% db(., c("geography","geography_alt"), c("sqlite1","csv1"))
+db("h2_geography_alt","h21") %>% db(., c("geography_dim_alt","geography"), c("sqlite1","csv1"))
 
 # or use dbCopy wrapper
-dbCopy("geography", "h21", "geography_alt_alt", "sqlite1")
+dbCopy("h2_geography", "h21", "geography_alt_alt", "sqlite1")
 
 ### Join across databases
 
 # join sqlite fact table to h2 geography dimension
-db("sales_table", "sqlite1", key="geog_code")[
-  db("geography", "h21", key="geog_code")] %>% head(2)
+db("sales_fact", "sqlite1", key="geog_code")[
+  db("h2_geography", "h21", key="geog_code")] %>% head(2)
 
 # join h2 fact table to sqlite geography dimension
-db("sales_table", "h21", key="geog_code")[
+db("sales_fact", "h21", key="geog_code")[
   db("geography", "csv1", key="geog_code")] %>% head(2)
 
 ### Obviously join database side fully supported
 
-db("SELECT * FROM sales_table sales JOIN geography ON sales.geog_code = geography.geog_code") %>% head(2)
+db("SELECT * FROM sales_fact sales JOIN geography_dim geog ON sales.geog_code = geog.geog_code") %>% head(2)
 
 ### ETL: fetch from various databases, join, aggregate and save to db
 
-# grab tables from dbs
-geog <- db("geography", "h21", key="geog_code")
-sales <- db("sales_table", "sqlite1", key="geog_code")
+# Extract data from databases
+geog <- db("h2_geography", "h21", key="geog_code")
+sales <- db("sales_fact", "sqlite1", key="geog_code")
 
-# do transformation
-sales_by_division_vs_region <- geog[sales
-     ][,region_value := sum(value,na.rm=TRUE),
-       .(geog_region_name)
-       ][,.(value = sum(value,na.rm=TRUE),
-            value_to_region = sum(value,na.rm=TRUE) / region_value[1L]),
-         .(geog_region_name,geog_division_name)]
+# Make transformations
+sales_by_division_vs_region <- 
+  geog[sales
+       ][, region_value := sum(value,na.rm=TRUE), .(geog_region_name)
+         ][, .(value = sum(value,na.rm=TRUE),
+               value_to_region = sum(value,na.rm=TRUE) / region_value[1L]),
+           .(geog_region_name,geog_division_name)]
 
-# save to table to sqlite
+# Load data to to sqlite
 db(sales_by_division_vs_region,"sales_by_division_vs_region")
 
-# check data
-db("SELECT * FROM sales_by_division_vs_region") %>% head(2)
+# Verify data
+db("SELECT * FROM sales_by_division_vs_region") %>% head(4)
 
 ### The same ETL process but in one data.table chain
 
-db("geography", "h21", key="geog_code")[
-  db("sales_table", "sqlite1", key="geog_code")
-  ][,region_value := sum(value,na.rm=TRUE),
-    .(geog_region_name)
-    ][,.(value = sum(value,na.rm=TRUE),
-         value_to_region = sum(value,na.rm=TRUE) / region_value[1L]),
-      .(geog_region_name,geog_division_name)
-      ][,db(.SD,"sales_by_division_vs_region_2")] %>% invisible
+db("h2_geography", "h21", key="geog_code"
+   )[db("sales_fact", "sqlite1", key="geog_code")
+     ][, region_value := sum(value,na.rm=TRUE), .(geog_region_name)
+       ][, .(value = sum(value,na.rm=TRUE),
+             value_to_region = sum(value,na.rm=TRUE) / region_value[1L]),
+         .(geog_region_name,geog_division_name)
+         ][, db(.SD,"sales_by_division_vs_region_2")] %>% invisible
 ```
    
 ---
@@ -183,7 +193,7 @@ sql <- c(sql, "CREATE VIEW v_2_minus_1 AS
 # create all 4 views, turn on timing
 db(sql, timing=TRUE)
 
-# for exact data this should return 0 rows
+# for exact data match below query should return 0 rows
 db("SELECT * FROM v_1_minus_2 UNION ALL SELECT * FROM v_2_minus_1", timing=TRUE)
 
 # drop all existing views
@@ -217,12 +227,12 @@ get.timing(40)[,.SD,.SDcols=-c("dwtools_session","in_n","user_self","sys_self","
 
 For extended logging solution see [logR](https://github.com/jangorecki/logR) package that allows:
 
-- transactional logging: insert before evaluation, update after completion.
+- transactional logging: insert log, evaluate call, update log.
 - warnings and error catching.
 - log process metadata: in/our count, tags.
-- logging to any database supported by `dwtools::db` function.
+- logging to any DBI, JDBC, ODBC database supported by `dwtools::db`.
 - email notification on warnings/error.
-- supports parallel processing.
+- support parallel processing.
 
 ---
 
@@ -292,7 +302,7 @@ print(names(DT)) # all columns in result
   
 #### `build_hierarchy`: detect basic hierarchy
 
-Takes single dataset on input and detects hierarchies by cardinality of unique groupings of all possible variable pairs. Returns star schema: one fact table and multiple dimension tables. Handle only basic cases.  
+Takes single dataset on input and detects hierarchies by cardinality of unique groupings of all possible variable pairs. Returns star schema: one fact table and multiple dimension tables. It handle only basic cases.  
 
 ```{r build_hierarchy}
 DT <- joinbyv(X$SALES, join=list(X$CURRENCY, X$GEOGRAPHY))
@@ -370,6 +380,6 @@ A brief comment on others functions in the package.
 ```{r exit_cleanup, echo=FALSE, results='hide'}
 dbDisconnect(conn=sqlite1$conn)
 dbDisconnect(conn=h21$conn)
-file.remove(c("geography.csv","geography_alt.csv"))
+file.remove("geography.csv")
 ```
   
