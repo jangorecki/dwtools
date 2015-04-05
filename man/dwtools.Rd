@@ -12,6 +12,7 @@ Extension for \link{data.table} package for Data Warehouse related functionaliti
 The core functions includes:
 \itemize{
 \item \link{db} as Extracting and Loading tool in ETL terms.
+\item \link{CUBE} cube class object and MDX like queries on it.
 \item \link{joinbyv} a denormalization of star schema and snowflake schema to single table.
 \item \link{dw.populate} populate star schema data.
 \item \link{timing} measure timing and rows in-out, including logging to db and verbose messages.
@@ -21,6 +22,6 @@ The core functions includes:
 }
 \note{
 All dot prefixed arguments are designed to be taken from the options, use them only in special cases, they may be removed from functions input args in future.\cr
-The base option \emph{digits.secs} will be changed to 3 on package loading.
+The base option \emph{digits.secs} will be changed to 3 on package load.
 }
 

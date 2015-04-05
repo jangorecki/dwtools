@@ -10,13 +10,6 @@ output:
 ---
 
 ```{r r_init, echo=FALSE}
-# TO DO
-# [x] read data - fread - silent
-# [x] remove base tests due to very long time of execution: group, distinct, union
-# [x] optimize data population for DB to speedup full test
-# [x] optimize data.equal.data.table
-# [x] add postgres installation to ec2 script
-# [x] add volumes support: 5e5, 5e6, 5e7
 suppressPackageStartupMessages(library(dwtools))
 # presentation pkgs
 library(knitr)
@@ -172,10 +165,6 @@ showtiming <- function(last=1L,trunc_expr=FALSE){
 print_expr <- function(x){
   copy(x)[order(indexing,scenario),indx:=seq_len(.N), list(environment,tool)][indx==1L][ # filter only to first test in each tool
     ][,cat(tool,": \x60",expr,"\x60<br>",sep=""),keyby=list(environment,tool)]
-}
-plot_timing <- function(x){
-  # TO DO
-  invisible()
 }
 
 # filter sample - valid for dw.populate(S=1) and N: 1e3, and from 1e5 to 1e8, by 0.5
@@ -1685,27 +1674,26 @@ amazon_ec2_R3 = data.table(model=c("r3.large","r3.xlarge","r3.2xlarge","r3.4xlar
 print(sessionInfo())
 ```
 
+```{r benchmark_timing_save, echo=FALSE, eval=FALSE}
 ## Benchmark timings
 
-```{r benchmark_timing_save, echo=FALSE}
 # query benchmark results only from current session
 dt = get.timing(FALSE)
 saveRDS(dt,paste0("benchmark_",N,"_",getOption("dwtools.session"),".rds")) # store logs for easier merging multiple N timings
 ```
-
-TO DO some overview plots for multiple tests, yet single N:
-
-```{r benchmark_timing_summary, echo=FALSE}
+```{r benchmark_timing_summary, echo=FALSE, eval=FALSE}
+# TO DO some overview plots for multiple tests, yet single N:
 # each tool vs mean
-dt <- dt[,c("test","scenario","indexing","environment","tool","fun") := rbindlist(lapply(strsplit(tag, ";", fixed="TRUE"),as.list))
-         ][,.(elapsed),by = c("dwtools_session","in_n","test","scenario","indexing","environment","tool")]
-# TO DO
-rm(dt)
+# dt <- dt[,c("test","scenario","indexing","environment","tool","fun") := rbindlist(lapply(strsplit(tag, ";", fixed="TRUE"),as.list))
+#          ][,.(elapsed),by = c("dwtools_session","in_n","test","scenario","indexing","environment","tool")]
+# rm(dt)
 ```
 
 ## Conclusions
 
-TO DO summary "R can cover ETL needs well and scalable"
+R can cover ETL needs well and scalable. It's computing time and memory usage beats competitors.  
+The biggest limitation is the need to fit data in memory, but I believe it will not be an issues for most use cases (see 2 000 000 000 rows data.table benchmark).  
+R's flexibility as programming language greatly enhance capabilities of such ETL approach.  
 
 ## References
 

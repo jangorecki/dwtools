@@ -276,6 +276,29 @@ pkgsVersion(pkgs, libs = list(user = .libPaths()[1L],
 
 ### Data modelling related
 
+#### `CUBE`: cube class object and MDX queries
+
+Forms `CUBE` object from fact and dimension tables and query cube using MDX like queries.  
+
+```{r cube}
+cube <- CUBE$new(
+  fact = list(sales = X$SALES),
+  dim = list(customer = X$CUSTOMER,
+              product = X$PRODUCT,
+              geography = X$GEOGRAPHY,
+              time = X$TIME,
+              currency = X$CURRENCY),
+  ref = list("sales-time"="time_code", "sales-currency"="curr_code", "sales-geography"="geog_code", "sales-customer"="cust_code", "sales-product"="prod_code")
+)
+print(cube)
+cube$MDX(
+  rows = list(time = c("time_year_code","time_month_code","time_month_name")),
+  cols = list(sales = "value", geography = "geog_region_name"),
+  from = "sales",
+  where = list(currency = quote(curr_type == "fiat"))
+) %>% head(6L)
+```
+
 #### `joinbyv`: batch join
 
 Batch join multiple tables into one master table.  

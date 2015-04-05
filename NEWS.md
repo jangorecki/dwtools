@@ -1,19 +1,16 @@
-# dwtools 0.8.3.8
+# dwtools 0.8.3.9
 
+- [x] Cube class with MDX like query support
 - [x] dwtools introduction vignette
 - [x] added JDBC support to db function
 - [x] Entity-attribute-value (EAV) value calculation helper
-- [ ] *R vs SQL* benchmark vignette
+- [x] *R vs SQL* benchmark vignette
 - [x] new get.timing(), trunc.timing() functions for in-memory logs
 - [x] change in timing (non-db) approach
   - [x] no more 'timing' attribute
   - [x] a lot of code simplification
 - [x] shinyDW renamed to shinyBI
-- [ ] shinyBI hierarchy browsing using
-  - [x] denormalized data
-  - [ ] star schema query using joinbyv
-  - [ ] db denormalized
-  - [ ] db star, denormalize SQL side
+- [x] shinyBI hierarchy browsing using denormalized data
 - [x] db - simplify code
 - [x] dbCopy - update for new timing
 - [x] updated tests, examples

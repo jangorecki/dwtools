@@ -1,15 +1,21 @@
 Package: dwtools
 Type: Package
 Title: Data Warehouse related functions.
-Version: 0.8.3.8
-Date: 2015-03-20
+Version: 0.8.3.9
+Date: 2015-04-05
 Author: Jan Gorecki
 Maintainer: Jan Gorecki <J.Gorecki@wit.edu.plt>
+Description: Data Warehouse, Business Intelligence, data integration helpers. Unifies database connectors
+    to DBI, RJDBC, RODBC, csv. Easy managing multiple simultaneous db connections. MDX like queries on cube class object.
+    Data modelling helpers, denormalization of star schema and snowflake schema, basic
+    normalization. And more.
+License: GPL-3
 Depends:
     data.table (>= 1.9.5)
 Imports:
     digest,
-    devtools
+    devtools,
+    R6
 Suggests:
     testthat,
     jsonlite,
@@ -21,9 +27,6 @@ Suggests:
     Rbitcoin,
     shiny,
     shinyTree,
-    microbenchmark
-Description: Data Warehouse and data integration helpers. Unifies database connectors
-    to DBI, jdbc, odbc, csv. Easy multiple simultaneous databases connections managing.
-    Data modelling helpers, denormalization of star schema and snowflake schema, basic
-    normalization. And few more.
-License: GPL-3
+    microbenchmark,
+    knitr
+VignetteBuilder: knitr
