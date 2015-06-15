@@ -36,10 +36,12 @@ idxv <- function(DT, Idx, grp = FALSE){
 #' @export
 #' @examples
 #' # see ?idxv examples
-CJI <- function(IDX, ..., nomatch = 0){
+CJI <- function(IDX, values, nomatch = 0){
+  if(!is.list(values)){
+    stop("values argument must be a list()")
+  }
   DT.names <- attr(IDX,"DT.names",TRUE)
   DT.key <- attr(IDX,"DT.key",TRUE)
-  values <- as.list(substitute(list(...)))[-1L]
   idx_skip <- rep(TRUE,length(DT.names))
   idx_skip[0:length(values)] <- sapply(values, isTRUE, USE.NAMES = FALSE)
   args.match <- DT.names[!idx_skip]
